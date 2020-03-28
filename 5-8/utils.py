@@ -9,9 +9,13 @@ class State:
 
 
 class TimeStep:
-	def __init__(self, state, reward):
+	def __init__(self, state, reward, terminal = False):
 		self.state = state
 		self.reward = reward
+		self.terminal = terminal
 	
 	def __str__(self):
-		return "State: [{}], reward: {}".format(self.state, self.reward)
+		return "{}: [{}], reward: {}".format(
+			"Terminal state" if self.terminal else "State",
+			self.state,
+			self.reward)

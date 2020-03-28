@@ -55,7 +55,7 @@ class Track:
 		x_distance = float(end[0] - start[0])
 		
 		gradient = float(end[1] - start[1]) / x_distance
-		y_at_goal = (float(goal_x - start[0]) / x_distance) * gradient
+		y_at_goal = start[1] + (float(goal_x - start[0]) / x_distance) * gradient
 		
 		return self.goal_range[0] <= int(y_at_goal) <= self.goal_range[1]
 	
@@ -102,7 +102,7 @@ class TrackEnvironment:
 		new_pos = self._compute_move(self._position, self._velocity)
 
 		if self._track.crosses_goal(self._position, new_pos):
-			return TimeStep(State(new_pos, self._velocity), constants.GOAL_REWARD)
+			return TimeStep(State(new_pos, self._velocity), constants.GOAL_REWARD, terminal = True)
 		elif self._track.out_of_range(new_pos):
 			self.reset()
 			return TimeStep(self._get_state(), constants.STEP_REWARD)

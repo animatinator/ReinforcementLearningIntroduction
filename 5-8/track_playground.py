@@ -26,8 +26,13 @@ def _draw_env(env, screen):
 
 
 def game_loop(env):
+	pygame.display.set_caption("Track environment playground")
 	size = env.size()
 	screen = pygame.display.set_mode([size[0] * TILE_SIZE, size[1] * TILE_SIZE])
+	
+	clock = pygame.time.Clock()
+	
+	total_reward = 0
 
 	running = True
 	while running:
@@ -35,19 +40,33 @@ def game_loop(env):
 			if event.type == pygame.QUIT:
 				running = False
 			if event.type == pygame.KEYDOWN:
+				if event.key not in {pygame.K_LEFT, pygame.K_RIGHT, pygame.K_UP, pygame.K_DOWN, pygame.K_SPACE}:
+					continue
+				
+				action = Action(0, 0)
 				if event.key == pygame.K_LEFT:
-					print(env.step(Action(-1, 0)))
+					action = Action(-1, 0)
 				if event.key == pygame.K_RIGHT:
-					print(env.step(Action(1, 0)))
+					action = Action(1, 0)
 				if event.key == pygame.K_UP:
-					print(env.step(Action(0, 1)))
+					action = Action(0, 1)
 				if event.key == pygame.K_DOWN:
-					print(env.step(Action(0, -1)))
-				if event.key == pygame.K_SPACE:
-					env.step(Action(0, 0))
+					action = Action(0, -1)
+				
+				timestep = env.step(action)
+				total_reward += timestep.reward
+				print(timestep)
+				
+				if (timestep.terminal):
+					print("Goal reached! Total reward: {}".format(total_reward))
+					print("Resetting")
+					env.reset()
+					total_reward = 0
 		
 		_draw_env(env, screen)
 		pygame.display.flip()
+		
+		clock.tick(10)
 
 
 if __name__ == '__main__':
