@@ -1,0 +1,7 @@
+# Problem constants
+
+MIN_VELOCITY = 0
+MAX_VELOCITY = 5
+
+STEP_REWARD = -1
+GOAL_REWARD = 0
