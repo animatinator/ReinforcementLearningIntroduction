@@ -71,7 +71,7 @@ class TrackEnvironment:
 		self.reset()
 		
 	def _random_start_position(self):
-		y = len(self._track.track)
+		y = len(self._track.track) - 1
 		x = random.randrange(self._track.start_range[0], self._track.start_range[1])
 		return (x, y)
 		
