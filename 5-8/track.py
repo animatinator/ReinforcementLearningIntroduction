@@ -39,6 +39,12 @@ class Action:
 		self.x = x_move
 		self.y = y_move
 	
+	def __str__(self):
+		return "Action({}, {})".format(self.x, self.y)
+	
+	def __eq__(self, obj):
+		return isinstance(obj, Action) and self.x == obj.x and self.y == obj.y
+	
 	
 class Track:
 	def __init__(self, track, start_range, goal_range):
