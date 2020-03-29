@@ -94,18 +94,18 @@ if __name__ == '__main__':
 	assert(velocity_to_integer((3, 3)) == 21)
 	
 	# Build a Q function and check we can update it.
-	q_f = QFunction((200, 200), 6)
-	q_f.set(State((115, 20), (2, 2)), Action(1, 1), 27)
-	assert(q_f.get(State((115, 20), (2, 2)), Action(1, 1)) == 27)
+	q_f = QFunction((70, 70), 6)
+	q_f.set(State((15, 20), (2, 2)), Action(1, 1), 27)
+	assert(q_f.get(State((15, 20), (2, 2)), Action(1, 1)) == 27)
 
 	# Check the Q function can track visit counts too.
-	q_f.increment_count(State((115, 20), (2, 2)), Action(1, 1), 1)
-	q_f.increment_count(State((115, 20), (2, 2)), Action(1, 1), 26)
-	assert(q_f.get_count(State((115, 20), (2, 2)), Action(1, 1)) == 27)
+	q_f.increment_count(State((15, 20), (2, 2)), Action(1, 1), 1)
+	q_f.increment_count(State((15, 20), (2, 2)), Action(1, 1), 26)
+	assert(q_f.get_count(State((15, 20), (2, 2)), Action(1, 1)) == 27)
 	
 	# A maximising policy should now choose the action we assigned the value of
 	# 27 whenever we're in that state.
 	policy = build_max_policy(q_f)
-	assert(policy.get_action(State((115, 20), (2, 2))) == Action(1, 1))
+	assert(policy.get_action(State((15, 20), (2, 2))) == Action(1, 1))
 	
 	print("All smoke tests passed.")
