@@ -102,9 +102,12 @@ class TrackEnvironment:
 		return State(self._position, self._velocity)
 		
 	def step(self, action):
-		self._velocity = (
+		new_velocity = (
 			self._clamp_velocity_to_range(self._velocity[0] + action.x),
 			self._clamp_velocity_to_range(self._velocity[1] + action.y))
+		# Don't allow the velocity to be reduced to zero.
+		if (new_velocity[0] > 0 or new_velocity[1] > 0):
+			self._velocity = new_velocity
 		new_pos = self._compute_move(self._position, self._velocity)
 
 		if self._track.crosses_goal(self._position, new_pos):
