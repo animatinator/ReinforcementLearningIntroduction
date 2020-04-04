@@ -77,7 +77,7 @@ if __name__ == '__main__':
 			if At != Pi.get_action(St):
 				break
 			
-			W += 1.0 / soft_policy.action_probability(St, At)
+			W /= soft_policy.action_probability(St, At)
 	
 	plt.plot([x for x in range(TRAIN_STEPS)], rewards)
 	plt.show()
