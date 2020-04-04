@@ -58,12 +58,18 @@ class Track:
 		if end[0] < goal_x:
 			return False
 			
+		goal_pos = self.snap_to_goal(start, end)
+		
+		return self.goal_range[0] <= goal_pos[1] <= self.goal_range[1]
+	
+	def snap_to_goal(self, start, end):
+		goal_x = len(self.track[0]) - 1
 		x_distance = float(end[0] - start[0])
 		
 		gradient = float(end[1] - start[1]) / x_distance
 		y_at_goal = start[1] + (float(goal_x - start[0]) / x_distance) * gradient
-		
-		return self.goal_range[0] <= int(y_at_goal) <= self.goal_range[1]
+
+		return (goal_x, int(y_at_goal))
 	
 	def out_of_range(self, point):
 		if point[0] < 0 or point[1] < 0 or point [0] >= len(self.track[0]) or point[1] >= len(self.track):
@@ -112,6 +118,7 @@ class TrackEnvironment:
 		new_pos = self._compute_move(self._position, self._velocity)
 
 		if self._track.crosses_goal(self._position, new_pos):
+			new_pos = self._track.snap_to_goal(self._position, new_pos)
 			return TimeStep(State(new_pos, self._velocity), constants.GOAL_REWARD, terminal = True)
 		elif self._track.out_of_range(new_pos):
 			self.reset()
