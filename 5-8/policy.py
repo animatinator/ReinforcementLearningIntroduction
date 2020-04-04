@@ -65,7 +65,7 @@ class Policy:
 		self._pi[state.pos[1]][state.pos[0]][velocity_to_integer(state.vel)] = action_int
 		
 	def action_probability(self, state, action):
-		return 1 if self.get_action(state) == action else 0
+		return 1.0 if self.get_action(state) == action else 0.0
 
 
 def build_max_policy(q_function):
