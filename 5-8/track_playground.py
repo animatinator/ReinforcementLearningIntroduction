@@ -3,6 +3,7 @@
 import argparse
 from policy import Policy, RandomPolicy
 import pygame
+from save_policy import load_policy
 from track import Action, InspectableTrackEnvironent, read_track
 
 
@@ -16,8 +17,12 @@ CAR_COLOUR = (200, 200, 0)
 class HumanController:
 	def __init__(self, env):
 		self._env = env
-		self._total_reward = 0
+		self.reset()
 		
+	def reset(self):
+		self._env.reset()
+		self._total_reward = 0
+
 	def step(self, events):
 		for event in events:
 			if event.type == pygame.KEYDOWN:
@@ -49,8 +54,11 @@ class PolicyController:
 	def __init__(self, env, policy):
 		self._env = env
 		self._policy = policy
+		self.reset()
+	
+	def reset(self):
+		self._state = self._env.reset().state
 		self._total_reward = 0
-		self._state = env.reset().state
 	
 	def step(self, events):
 		action = self._policy.get_action(self._state)
@@ -93,6 +101,8 @@ def game_loop(env, controller):
 		for event in events:
 			if event.type == pygame.QUIT:
 				running = False
+			elif event.type == pygame.KEYDOWN and event.key == pygame.K_r:
+				controller.reset()
 		
 		controller.step(events)
 		
@@ -119,6 +129,9 @@ if __name__ == '__main__':
 		controller = PolicyController(env, policy)
 	elif args.control == 'random':
 		policy = RandomPolicy(9)
+		controller = PolicyController(env, policy)
+	elif args.control == 'saved_policy':
+		policy = load_policy()
 		controller = PolicyController(env, policy)
 	else:
 		raise ValueError('Invalid control type: {}. Try \'human\' or \'policy\'.'.format(args.control))

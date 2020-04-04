@@ -3,6 +3,7 @@ from episode import Episode, EpisodeStep
 import matplotlib.pyplot as plt 
 import numpy as np
 from policy import build_max_policy, EpsilonGreedyPolicy, Policy, QFunction
+from save_policy import save_policy
 from track import Action, TrackEnvironment, read_track
 
 
@@ -80,3 +81,5 @@ if __name__ == '__main__':
 	
 	plt.plot([x for x in range(TRAIN_STEPS)], rewards)
 	plt.show()
+	
+	save_policy(Pi)
