@@ -84,6 +84,7 @@ class TrackEnvironment:
 	def reset(self):
 		self._position = self._random_start_position()
 		self._velocity = (0, 0)
+		return TimeStep(self._get_state(), 0)
 		
 	def _clamp_velocity_to_range(self, velocity):
 		if velocity < constants.MIN_VELOCITY:

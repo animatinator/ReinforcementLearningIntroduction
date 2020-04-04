@@ -50,18 +50,19 @@ class PolicyController:
 		self._env = env
 		self._policy = policy
 		self._total_reward = 0
+		self._state = env.reset().state
 	
 	def step(self, events):
-		state = env.get_state()
-		action = self._policy.get_action(state)
+		action = self._policy.get_action(self._state)
 		timestep = env.step(action)
+		self._state = timestep.state
 		self._total_reward += timestep.reward
 		print(timestep)
 		
 		if (timestep.terminal):
 			print("Goal reached! Total reward: {}".format(self._total_reward))
 			print("Resetting")
-			env.reset()
+			self._state = env.reset().state
 			self._total_reward = 0
 
 
