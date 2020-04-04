@@ -33,15 +33,18 @@ if __name__ == '__main__':
 	Pi = build_max_policy(Q)
 	
 	for i in range(TRAIN_STEPS):
-		if i % REPORT_EVERY == 0:
-			print("Training step {}...".format(i))
 		soft_policy = EpsilonGreedyPolicy(EPSILON, Pi, NUM_ACTIONS)
 		episode = rollout(env, soft_policy)
 		
+		
+		if i % REPORT_EVERY == 0:
+			print("Training step {}...".format(i))
+			print("Episode length: {}".format(len(episode)))
+		
 		T = len(episode) - 1
 		
-		G = 0
-		W = 1
+		G = 0.0
+		W = 1.0
 		
 		for t in range(T-1, -1, -1):
 			# Get key variables from this episode step.
@@ -63,4 +66,4 @@ if __name__ == '__main__':
 			if At != Pi.get_action(St):
 				break
 			
-			W += 1 / (b_a_S)
+			W += 1.0 / soft_policy.action_probability(St, At)

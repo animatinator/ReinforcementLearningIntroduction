@@ -63,6 +63,9 @@ class Policy:
 	
 	def update(self, state, action_int):
 		self._pi[state.pos[1]][state.pos[0]][velocity_to_integer(state.vel)] = action_int
+		
+	def action_probability(self, state, action):
+		return 1 if self.get_action(state) == action else 0
 
 
 def build_max_policy(q_function):
@@ -97,6 +100,11 @@ class EpsilonGreedyPolicy:
 			return integer_to_action(random.randint(0, self._num_actions - 1))
 		else :
 			return self._pi.get_action(state)
+	
+	def action_probability(self, state, action):
+		random_portion = self._e * (1.0 / float(self._num_actions))
+		greedy_portion = (1.0 - self._e) * self._pi.action_probability(state, action)
+		return random_portion + greedy_portion
 
 	
 # Simple functionality tests (because I'm too lazy to test this project properly).
