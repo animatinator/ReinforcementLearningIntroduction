@@ -85,6 +85,19 @@ class RandomPolicy:
 	def get_action(self, state):
 		return integer_to_action(random.randint(0, self._action_range - 1))
 
+
+class EpsilonGreedyPolicy:
+	def __init__(self, epsilon, policy, num_actions):
+		self._e = epsilon
+		self._pi = policy
+		self._num_actions = num_actions
+	
+	def get_action(self, state):
+		if random.random() < self._e:
+			return integer_to_action(random.randint(0, self._num_actions - 1))
+		else :
+			return self._pi.get_action(state)
+
 	
 # Simple functionality tests (because I'm too lazy to test this project properly).
 if __name__ == '__main__':
@@ -117,5 +130,18 @@ if __name__ == '__main__':
 	# 27 whenever we're in that state.
 	policy = build_max_policy(q_f)
 	assert(policy.get_action(State((15, 20), (2, 2))) == Action(1, 1))
+	
+	# Epsilon-greedy policy with epsilon zero should follow the wrapped policy.
+	# In this case, it takes the action we assigned the value of 27 above.
+	e_greedy = EpsilonGreedyPolicy(0.0, policy, 9)
+	assert(e_greedy.get_action(State((15, 20), (2, 2))) == Action(1, 1))
+	
+	# Otherwise, it shouldn't always.
+	e_greedy_rand = EpsilonGreedyPolicy(1.0, policy, 9)
+	match = [False]*50
+	for i in range(50):
+		state = State((i, i), (0, 0))
+		match[i] = (e_greedy_rand.get_action(state) == policy.get_action(state))
+	assert(not np.all(match))
 	
 	print("All smoke tests passed.")
