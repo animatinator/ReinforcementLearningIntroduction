@@ -1,5 +1,6 @@
 from constants import *
-from episode import EpisodeStep
+from episode import Episode, EpisodeStep
+import matplotlib.pyplot as plt 
 from policy import build_max_policy, EpsilonGreedyPolicy, Policy, QFunction
 from track import Action, TrackEnvironment, read_track
 
@@ -8,11 +9,11 @@ def rollout(env, policy):
 	state = env.reset().state
 	reward = 0
 	terminal = False
-	episode = []
+	episode = Episode()
 
 	while not terminal:
 		action = policy.get_action(state)
-		episode.append(EpisodeStep(state, action, reward))
+		episode.add_step(EpisodeStep(state, action, reward))
 
 		timestep = env.step(action)
 		state = timestep.state
@@ -20,7 +21,7 @@ def rollout(env, policy):
 		terminal = timestep.terminal
 	
 	# Append the goal state and final reward (no action to report here).
-	episode.append(EpisodeStep(state, None, reward))
+	episode.add_step(EpisodeStep(state, None, reward))
 	
 	return episode
 
@@ -32,14 +33,16 @@ if __name__ == '__main__':
 	Q = QFunction(track.size(), VELOCITY_RANGE)
 	Pi = build_max_policy(Q)
 	
+	rewards = []
+	
 	for i in range(TRAIN_STEPS):
 		soft_policy = EpsilonGreedyPolicy(EPSILON, Pi, NUM_ACTIONS)
-		episode = rollout(env, soft_policy)
-		
+		episode_data = rollout(env, soft_policy)
+		episode = episode_data.get_steps()
+		rewards.append(episode_data.get_total_reward())
 		
 		if i % REPORT_EVERY == 0:
 			print("Training step {}...".format(i))
-			print("Episode length: {}".format(len(episode)))
 		
 		T = len(episode) - 1
 		
@@ -67,3 +70,10 @@ if __name__ == '__main__':
 				break
 			
 			W += 1.0 / soft_policy.action_probability(St, At)
+	
+	plt.plot([x for x in range(TRAIN_STEPS)], rewards)
+	plt.show()
+	
+	for i in range(10):
+		episode = rollout(env, Pi)
+		print("Sample reward: {}".format(episode.get_total_reward()))
