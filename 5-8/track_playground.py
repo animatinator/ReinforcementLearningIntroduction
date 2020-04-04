@@ -1,7 +1,7 @@
 # A PyGame tool for testing out the track environment.
 
 import argparse
-from policy import Policy
+from policy import Policy, RandomPolicy
 import pygame
 from track import Action, InspectableTrackEnvironent, read_track
 
@@ -116,6 +116,9 @@ if __name__ == '__main__':
 		controller = HumanController(env)
 	elif args.control == 'policy':
 		policy = Policy(env.size(), 6)
+		controller = PolicyController(env, policy)
+	elif args.control == 'random':
+		policy = RandomPolicy(9)
 		controller = PolicyController(env, policy)
 	else:
 		raise ValueError('Invalid control type: {}. Try \'human\' or \'policy\'.'.format(args.control))

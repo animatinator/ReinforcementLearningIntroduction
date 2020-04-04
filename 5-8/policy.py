@@ -3,6 +3,7 @@
 import constants
 import itertools
 import numpy as np
+import random
 from track import Action
 from utils import State
 
@@ -75,6 +76,14 @@ def build_max_policy(q_function):
 			policy.update(state, q_function.get_max_action(state))
 	
 	return policy
+	
+	
+class RandomPolicy:
+	def __init__(self, action_range):
+		self._action_range = action_range
+	
+	def get_action(self, state):
+		return integer_to_action(random.randint(0, self._action_range - 1))
 
 	
 # Simple functionality tests (because I'm too lazy to test this project properly).
