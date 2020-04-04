@@ -75,6 +75,9 @@ class Track:
 		if point[0] < 0 or point[1] < 0 or point [0] >= len(self.track[0]) or point[1] >= len(self.track):
 			return True
 		return self.track[point[1]][point[0]] == 0
+		
+	def size(self):
+		return (len(self.track[1]), len(self.track))
 
 
 class TrackEnvironment:
@@ -138,7 +141,7 @@ class InspectableTrackEnvironent(TrackEnvironment):
 		return self._get_state()
 		
 	def size(self):
-		return (len(self._track.track[1]), len(self._track.track))
+		return self._track.size()
 
 
 if __name__ == '__main__':
