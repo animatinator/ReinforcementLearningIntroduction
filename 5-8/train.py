@@ -1,6 +1,7 @@
 from constants import *
 from episode import Episode, EpisodeStep
 import matplotlib.pyplot as plt 
+import numpy as np
 from policy import build_max_policy, EpsilonGreedyPolicy, Policy, QFunction
 from track import Action, TrackEnvironment, read_track
 
@@ -34,6 +35,7 @@ if __name__ == '__main__':
 	Pi = build_max_policy(Q)
 	
 	rewards = []
+	best_reward_for_report_range = -10000
 	
 	for i in range(TRAIN_STEPS):
 		soft_policy = EpsilonGreedyPolicy(EPSILON, Pi, NUM_ACTIONS)
@@ -41,8 +43,13 @@ if __name__ == '__main__':
 		episode = episode_data.get_steps()
 		rewards.append(episode_data.get_total_reward())
 		
+		best_reward_for_report_range = max(best_reward_for_report_range, episode_data.get_total_reward())
+		
 		if i % REPORT_EVERY == 0:
 			print("Training step {}...".format(i))
+			print("Best reward: {}".format(best_reward_for_report_range))
+			best_reward_for_report_range = -1000
+			print("Average reward: {}".format(np.average(rewards[max(0, i - REPORT_EVERY):])))
 		
 		T = len(episode) - 1
 		
@@ -73,7 +80,3 @@ if __name__ == '__main__':
 	
 	plt.plot([x for x in range(TRAIN_STEPS)], rewards)
 	plt.show()
-	
-	for i in range(10):
-		episode = rollout(env, Pi)
-		print("Sample reward: {}".format(episode.get_total_reward()))
