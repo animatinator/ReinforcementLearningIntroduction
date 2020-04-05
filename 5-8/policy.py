@@ -51,7 +51,8 @@ class QFunction:
 
 class Policy:
 	def __init__(self, state_size, velocity_size):
-		randomised = np.random.rand(state_size[1], state_size[0], velocity_size * velocity_size)
+		randomised = np.random.rand(
+			state_size[1], state_size[0], velocity_size * velocity_size) + constants.Q_VALUE_BASELINE
 		self._pi = np.ndarray.astype(randomised * 9, np.int32)
 	
 	def get_action(self, state):
