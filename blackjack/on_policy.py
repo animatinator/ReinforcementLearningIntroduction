@@ -23,4 +23,5 @@ def rollout(policy):
 
 if __name__ == '__main__':
 	policy = policy.Policy()
+	policy.e_soften(0.5)
 	print(rollout(policy))
