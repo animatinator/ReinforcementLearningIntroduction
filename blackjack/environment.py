@@ -28,6 +28,9 @@ class State:
 			return sum(self._hand) + 10
 		return sum(self._hand)
 		
+	def last_card(self):
+		return self._hand[-1]
+
 	def bust(self):
 		return self.sum() > 21
 
@@ -36,7 +39,7 @@ class Blackjack:
 		self._reset()
 	
 	def _make_observation(self):
-		return (self._player.sum(), self._dealer.sum(), self._player.usable_ace())
+		return (self._player.sum(), self._dealer.last_card(), self._player.usable_ace())
 		
 	def _reset(self):
 		player_cards = self._draw_hand()
