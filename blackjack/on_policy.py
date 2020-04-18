@@ -2,6 +2,7 @@
 
 import environment
 import numpy as np
+import policy
 
 
 def rollout(policy):
@@ -12,9 +13,8 @@ def rollout(policy):
 	
 	while not timestep.terminal:
 		state = timestep.observation
-		action = policy[state[0]][state[1]][1 if state[2] else 0]
+		action = policy.act(state[0], state[1], state[2])
 		old_step = timestep
-		print(policy[state[0]][state[1]])
 		timestep = env.step(action)
 		episode.append((old_step.observation, action, timestep.reward))
 	
@@ -22,6 +22,5 @@ def rollout(policy):
 
 
 if __name__ == '__main__':
-	policy = np.ones((22, 11, 2), dtype=np.bool)
-	print(policy)
+	policy = policy.Policy()
 	print(rollout(policy))
