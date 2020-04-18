@@ -100,4 +100,3 @@ def plot_policy(policy):
 if __name__ == '__main__':
 	policy = train_policy()
 	plot_policy(policy)
-	

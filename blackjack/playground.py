@@ -14,7 +14,8 @@ def strategy(observation):
 if __name__ == '__main__':
 	env = environment.Blackjack()
 	for i_episode in range(20):
-		observation = env.reset()
+		timestep = env.reset()
+		observation = timestep.observation
 		for t in range(100):
 			print_observation(observation)
 			action = strategy(observation)
