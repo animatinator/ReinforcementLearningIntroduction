@@ -10,10 +10,21 @@ def e_soften(array, e):
 	return softened / float(sum(softened))
 
 
+class ReturnCounter:
+	def __init__(self):
+		self._r = [[[[[]] * 2] * 2] * 11] * 22
+
+	def add_return(self, player_score, dealer_score, usable_ace, action, r):
+		self._r[player_score][dealer_score][usable_ace][action].append(r)
+
+	def average_return(self, player_score, dealer_score, usable_ace, action):
+		return np.average(self._r[player_score][dealer_score][usable_ace][action])
+
+
 class QValues:
 	def __init__(self):
 		# (player_score, dealer_score, usable_ace)
-		self._q = random.rand(21, 11, 2)
+		self._q = random.rand(22, 11, 2)
 		
 	def get(self, player_score, dealer_score, usable_ace):
 		return self._q[player_score][dealer_score][usable_ace]
