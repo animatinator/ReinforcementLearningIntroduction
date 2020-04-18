@@ -15,7 +15,7 @@ class TimeStep:
 
 class State:
 	def __init__(self, initial_hand):
-		self._hand = []
+		self._hand = initial_hand
 		
 	def deal(self, card):
 		self._hand.append(card)
