@@ -5,8 +5,8 @@ import numpy as np
 import policy
 
 
-EPSILON = 0.2
-TRAIN_STEPS = 1000
+EPSILON = 0.1
+TRAIN_STEPS = 10000
 LAMBDA = 0.9
 
 
@@ -38,33 +38,49 @@ def process_for_first_visits(rollout):
 			result.append(step + (True,))
 
 	return result
+	
+	
+def learn_from_episode(episode, pi, q, returns):
+	episode = process_for_first_visits(episode)
+	G = 0
 
+	for i in range(len(episode) - 1, -1, -1):
+		step = episode[i]
+		G = (LAMBDA * G) + step[2]
 
-if __name__ == '__main__':
+		if step[3]:  # Indicates whether this is the first visit.
+			observation = step[0]
+			player_score = observation[0]
+			dealer_score = observation[1]
+			usable_ace = observation[2]
+			action = step[1]
+			returns.add_return(player_score, dealer_score, usable_ace, action, G)
+			q.update(player_score, dealer_score, usable_ace, action,
+				returns.average_return(player_score, dealer_score, usable_ace, action))
+			best_action = q.pick_best(player_score, dealer_score, usable_ace)
+
+			policy_update = policy.e_soften(
+				np.array([0.0, 1.0]) if best_action else np.array([1.0, 0.0]), EPSILON)
+			pi.set(player_score, dealer_score, usable_ace, policy_update)
+	
+
+def train_policy():
 	pi = policy.Policy()
+	# Stick on 20 or 21.
+	pi.set(20, 0, False, np.array([1.0, 0.0]))
+	pi.set(21, 0, False, np.array([1.0, 0.0]))
+	pi.set(20, 0, True, np.array([1.0, 0.0]))
+	pi.set(21, 0, True, np.array([1.0, 0.0]))
+	
 	pi.e_soften(EPSILON)
 	q = policy.QValues()
 	returns = policy.ReturnCounter()
 
 	for i in range(TRAIN_STEPS):
-		episode = process_for_first_visits(rollout(pi))
-		G = 0
+		episode = rollout(pi)
+		learn_from_episode(episode, pi, q, returns)
 
-		for i in range(len(episode) - 1, -1, -1):
-			step = episode[i]
-			G = (LAMBDA * G) + step[2]
 
-			if step[3]:  # Indicates whether this is the first visit.
-				observation = step[0]
-				player_score = observation[0]
-				dealer_score = observation[1]
-				usable_ace = observation[2]
-				action = step[1]
-				returns.add_return(player_score, dealer_score, usable_ace, action, G)
-				q.update(player_score, dealer_score, usable_ace, action,
-					returns.average_return(player_score, dealer_score, usable_ace, action))
-				best_action = q.pick_best(player_score, dealer_score, usable_ace)
-
-				policy_update = policy.e_soften(
-					np.array([0.0, 1.0]) if best_action else np.array([1.0, 0.0]), EPSILON)
-				pi.set(player_score, dealer_score, usable_ace, policy_update)
+if __name__ == '__main__':
+	policy = train_policy()
+	
