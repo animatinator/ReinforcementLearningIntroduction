@@ -16,8 +16,8 @@ def e_soften(array, e):
 
 class ReturnCounter:
 	def __init__(self):
-		self._r = np.zeros(shape=(22, 11, 2, 2))
-		self._c = np.zeros(shape=(22, 11, 2, 2))
+		self._r = np.zeros(shape=(22, 22, 2, 2))
+		self._c = np.zeros(shape=(22, 22, 2, 2))
 
 	def add_return(self, player_score, dealer_score, usable_ace, action, r):
 		action = bool_to_int(action)
@@ -42,7 +42,7 @@ class ReturnCounter:
 class QValues:
 	def __init__(self):
 		# (player_score, dealer_score, usable_ace, stick/hit)
-		self._q = random.rand(22, 11, 2, 2)
+		self._q = random.rand(22, 22, 2, 2)
 		
 	def get(self, player_score, dealer_score, usable_ace, action):
 		action = bool_to_int(action)
@@ -63,12 +63,12 @@ class QValues:
 class Policy:
 	def __init__(self):
 		# (player_score, dealer_score, usable_ace, stick/hit)
-		self._pi = np.ones((22, 11, 2, 2))
+		self._pi = np.ones((22, 22, 2, 2))
 		self._pi[:, :, :, 0] = False
 		
 	def e_soften(self, epsilon):
 		for p in range(22):
-			for d in range(11):
+			for d in range(22):
 				for u in range(2):
 					self._pi[p][d][u] = e_soften(self._pi[p][d][u], epsilon)
 
