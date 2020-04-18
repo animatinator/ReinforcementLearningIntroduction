@@ -1,13 +1,15 @@
 # On-policy first-visit MC control with a soft policy
 
 import environment
+import matplotlib.pyplot as plt
 import numpy as np
 import policy
 
 
 EPSILON = 0.1
-TRAIN_STEPS = 10000
 LAMBDA = 0.9
+TRAIN_STEPS = 30000
+REPORT_EVERY = 100
 
 
 def rollout(policy):
@@ -77,10 +79,25 @@ def train_policy():
 	returns = policy.ReturnCounter()
 
 	for i in range(TRAIN_STEPS):
+		if i % REPORT_EVERY == 0:
+			print("Train step {}...".format(i))
 		episode = rollout(pi)
 		learn_from_episode(episode, pi, q, returns)
+
+	return pi
+
+
+def plot_policy(policy):
+	p = np.random.randint(2, size=(100, 100))
+	no_ace = policy._pi[:, :, 0, 1]
+	ace = policy._pi[:, :, 1, 1]
+	plt.imshow(no_ace)
+	plt.show()
+	plt.imshow(ace)
+	plt.show()
 
 
 if __name__ == '__main__':
 	policy = train_policy()
+	plot_policy(policy)
 	

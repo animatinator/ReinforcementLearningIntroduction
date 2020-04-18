@@ -16,13 +16,27 @@ def e_soften(array, e):
 
 class ReturnCounter:
 	def __init__(self):
-		self._r = [[[[[]] * 2] * 2] * 11] * 22
+		self._r = np.zeros(shape=(22, 11, 2, 2))
+		self._c = np.zeros(shape=(22, 11, 2, 2))
 
 	def add_return(self, player_score, dealer_score, usable_ace, action, r):
-		self._r[player_score][dealer_score][usable_ace][action].append(r)
+		action = bool_to_int(action)
+		usable_ace = bool_to_int(usable_ace)
+
+		cur_count = self._c[player_score][dealer_score][usable_ace][action]
+		new_count = cur_count + 1.0
+		if cur_count == 0.0:
+			self._r[player_score][dealer_score][usable_ace][action] = r
+		else:
+			cur_r = self._r[player_score][dealer_score][usable_ace][action]
+			new_r = cur_r + (r - cur_r) / new_count
+			self._r[player_score][dealer_score][usable_ace][action] = new_r
+		self._c[player_score][dealer_score][usable_ace][action] = new_count
 
 	def average_return(self, player_score, dealer_score, usable_ace, action):
-		return np.average(self._r[player_score][dealer_score][usable_ace][action])
+		action = bool_to_int(action)
+		usable_ace = bool_to_int(usable_ace)
+		return self._r[player_score][dealer_score][usable_ace][action]
 
 
 class QValues:
@@ -70,3 +84,11 @@ class Policy:
 if __name__ == '__main__':
 	policy = Policy()
 	assert(policy.act(10, 0, True) == True)
+	
+	counter = ReturnCounter()
+	counter.add_return(1, 1, True, True, 1)
+	assert(counter.average_return(1, 1, True, True) == 1)
+	counter.add_return(1, 1, True, True, 0)
+	assert(counter.average_return(1, 1, True, True) == 0.5)
+	counter.add_return(1, 1, True, True, 5)
+	assert(counter.average_return(1, 1, True, True) == 2)
