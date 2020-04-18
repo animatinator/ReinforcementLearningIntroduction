@@ -10,6 +10,7 @@ EPSILON = 0.1
 LAMBDA = 0.9
 TRAIN_STEPS = 200000
 REPORT_EVERY = 100
+AVERAGE_RETURN_EPISODES = 1000
 
 
 def rollout(policy):
@@ -97,6 +98,16 @@ def plot_policy(policy):
 	plt.show()
 
 
+def find_average_return(policy):
+	total = 0
+	for i in range(AVERAGE_RETURN_EPISODES):
+		episode = rollout(policy)
+		total += episode[-1][2]
+
+	return total / AVERAGE_RETURN_EPISODES
+
+
 if __name__ == '__main__':
 	policy = train_policy()
 	plot_policy(policy)
+	print("Average return: {}".format(find_average_return(policy)))
