@@ -51,7 +51,7 @@ class Blackjack:
 	def reset(self):
 		self._reset()
 		
-		return self._make_observation()
+		return TimeStep(self._make_observation(), 0, False)
 		
 	def _draw_hand(self):
 		return [self._draw(), self._draw()]
