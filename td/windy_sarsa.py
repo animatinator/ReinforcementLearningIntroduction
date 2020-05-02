@@ -6,6 +6,9 @@ from windy_env import Action, TimeStep, WindyGridworld
 
 
 EPSILON = 0.1
+ALPHA = 0.2
+TRAIN_STEPS = 100000
+REPORT_EVERY = 1000
 
 
 class QFunction:
@@ -13,10 +16,10 @@ class QFunction:
 		self._q = np.zeros((height, width, len(Action)), dtype=np.float32)
 
 	def get_value(self, state, action):
-		return self._q[state.y][state.x][action.value]
+		return self._q[state[1]][state[0]][action.value]
 
-	def set_value(elf, state, action, value):
-		self._q[state.y][state.x][action.value] = value
+	def set_value(self, state, action, value):
+		self._q[state[1]][state[0]][action.value] = value
 
 	def optimal_action(self, state, possible_actions):
 		# Absolute mess. Trying to get the maximum action from the possible actions.
@@ -33,7 +36,7 @@ class QFunction:
 
 def e_greedy_action(state, possible_actions, q_function, epsilon):
 	if (np.random.uniform() < epsilon):
-		return random.sample(possible_actions)
+		return random.choice(list(possible_actions))
 	else:
 		return q_function.optimal_action(state, possible_actions)
 
@@ -42,6 +45,41 @@ if __name__ == '__main__':
 	winds = [0, 0, 0, 1, 1, 1, 2, 2, 1, 0]
 	height = 7
 	goal_pos = (7, 3)
+	start_state = (0, 3)
+
+	finished_episodes = 0
 
 	env = WindyGridworld(winds, height, goal_pos)
 	q = QFunction(width=len(winds), height=height)
+
+	state = start_state
+	action = e_greedy_action(state, env.available_actions(state), q, EPSILON)
+
+	for i in range(TRAIN_STEPS):
+		# Every REPORT_EVERY steps, print out how many times we reached the
+		# goal since the last report and reset the count.
+		if (i % REPORT_EVERY == 0):
+			print("Step {}, {} episodes completed since last report.".format(i, finished_episodes))
+			finished_episodes = 0
+
+		# Step, note the reward and get the next state and action.
+		timestep = env.step(state, action)
+		reward = timestep.reward
+		state_1 = timestep.state
+		action_1 = e_greedy_action(state_1, env.available_actions(state_1), q, EPSILON)
+
+		# Update Q(state, action) based on Q(state', action')
+		q_s_a = q.get_value(state, action)
+		q_s1_a1 = q.get_value(state_1, action_1)
+		# No discounting here.
+		new_q_s_a = q_s_a + ALPHA * (reward + q_s1_a1 - q_s_a)
+		q.set_value(state, action, new_q_s_a)
+
+		state = state_1
+		action = action_1
+
+		# Reset and increment finished_episodes if we reached the goal.
+		if timestep.terminal:
+			finished_episodes += 1
+			state = start_state
+			action = e_greedy_action(state, env.available_actions(state), q, EPSILON)
