@@ -5,10 +5,16 @@ import random
 from windy_env import Action, TimeStep, WindyGridworld
 
 
-EPSILON = 0.1
-ALPHA = 0.2
+EPSILON = 0.05
+ALPHA = 0.1
 TRAIN_STEPS = 100000
 REPORT_EVERY = 1000
+
+WINDS = [0, 0, 0, 1, 1, 1, 2, 2, 1, 0]
+WIDTH = len(WINDS)
+HEIGHT = 7
+GOAL_POS = (7, 3)
+START_STATE = (0, 3)
 
 
 class QFunction:
@@ -42,17 +48,12 @@ def e_greedy_action(state, possible_actions, q_function, epsilon):
 
 
 if __name__ == '__main__':
-	winds = [0, 0, 0, 1, 1, 1, 2, 2, 1, 0]
-	height = 7
-	goal_pos = (7, 3)
-	start_state = (0, 3)
-
 	finished_episodes = 0
 
-	env = WindyGridworld(winds, height, goal_pos)
-	q = QFunction(width=len(winds), height=height)
+	env = WindyGridworld(WINDS, HEIGHT, GOAL_POS)
+	q = QFunction(WIDTH, HEIGHT)
 
-	state = start_state
+	state = START_STATE
 	action = e_greedy_action(state, env.available_actions(state), q, EPSILON)
 
 	for i in range(TRAIN_STEPS):
@@ -81,5 +82,5 @@ if __name__ == '__main__':
 		# Reset and increment finished_episodes if we reached the goal.
 		if timestep.terminal:
 			finished_episodes += 1
-			state = start_state
+			state = START_STATE
 			action = e_greedy_action(state, env.available_actions(state), q, EPSILON)
