@@ -70,7 +70,14 @@ if __name__ == '__main__':
 	winds = [0, 0, 0, 1, 1, 1, 2, 2, 1, 0]
 	height = 7
 	goal_pos = (7, 3)
+
 	env = WindyGridworld(winds, height, goal_pos)
+
+	# Verify behaviour
+	assert(Action.UP not in env.available_actions((4, 0)))
+	assert(Action.DOWN not in env.available_actions((4, 6)))
+	assert(Action.LEFT not in env.available_actions((0, 4)))
+	assert(Action.RIGHT not in env.available_actions((9, 4)))
 	assert(env.step((9, 4), Action.UP) == TimeStep((9, 3), -1, False))
 	assert(env.step((8, 4), Action.LEFT) == TimeStep(goal_pos, 0, True))
 	assert(env.step((4, 0), Action.RIGHT) == TimeStep((5, 0), -1, False))
