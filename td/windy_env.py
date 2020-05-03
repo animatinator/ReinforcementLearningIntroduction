@@ -6,16 +6,29 @@
 # * Wind applies in the UP direction, thus decreasing the y coordinate.
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import Enum, unique
 
 
+@unique
 class Action(Enum):
 	UP = 0
 	DOWN = 1
 	LEFT = 2
 	RIGHT = 3
 	
-	
+	def get_movement(self):
+		if self == Action.UP:
+			return (0, -1)
+		elif self == Action.DOWN:
+			return (0, 1)
+		elif self == Action.LEFT:
+			return (-1, 0)
+		elif self == Action.RIGHT:
+			return (1, 0)
+		else:
+			raise ArgumentError("Unsupported action type: {}".format(self))
+
+
 @dataclass
 class TimeStep:
 	state: (int, int)
@@ -42,18 +55,10 @@ class WindyGridworld:
 			actions.add(Action.RIGHT)
 		
 		return actions
-	
+
 	def step(self, state, action):
 		assert(action in self.available_actions(state))
-		dx = dy = 0
-		if action == Action.UP:
-			dy = -1
-		elif action == Action.DOWN:
-			dy = 1
-		elif action == Action.LEFT:
-			dx = -1
-		elif action == Action.RIGHT:
-			dx = 1
+		(dx, dy) = action.get_movement()
 		
 		# Apply winds.
 		x = state[0] + dx
