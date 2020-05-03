@@ -50,7 +50,8 @@ def e_greedy_action(state, possible_actions, q_function, epsilon):
 if __name__ == '__main__':
 	finished_episodes = 0
 
-	env = WindyGridworld(WINDS, HEIGHT, GOAL_POS, EXTENDED_KINGS_ACTIONS)
+	env = WindyGridworld(
+		WINDS, HEIGHT, GOAL_POS, EXTENDED_KINGS_ACTIONS, stochastic_wind = True)
 	q = QFunction(WIDTH, HEIGHT, EXTENDED_KINGS_ACTIONS)
 
 	state = START_STATE

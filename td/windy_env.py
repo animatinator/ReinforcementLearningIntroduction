@@ -7,6 +7,7 @@
 
 from dataclasses import dataclass
 from enum import Enum, unique
+import random
 
 
 @unique
@@ -58,12 +59,13 @@ class TimeStep:
 
 
 class WindyGridworld:
-	def __init__(self, winds, height, goal_pos, action_filter):
+	def __init__(self, winds, height, goal_pos, action_filter, stochastic_wind = False):
 		self._winds = winds
 		self._w = len(winds)
 		self._h = height
 		self._goal = goal_pos
 		self._action_filter = action_filter
+		self._stochastic_wind = stochastic_wind
 		
 	def available_actions(self, state):
 		actions = set()
@@ -96,8 +98,13 @@ class WindyGridworld:
 		
 		# Apply winds.
 		x = state[0] + dx
-		dy -= self._winds[state[0]]  # Wind from the current state applies.
+		wind = self._winds[state[0]]  # Wind from the current state applies.
+		if self._stochastic_wind:
+			# Randomly vary the wind by up to one in each direction.
+			wind += (random.randint(0, 2) - 1)
+		dy -= wind
 		y = max(0, state[1] + dy)
+		y = min(self._h - 1, y)
 		
 		if (x, y) == self._goal:
 			return TimeStep((x, y), 0, True)
