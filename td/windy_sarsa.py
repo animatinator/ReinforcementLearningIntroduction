@@ -2,7 +2,7 @@
 
 import numpy as np
 import random
-from windy_env import Action, KINGS_ACTIONS, STANDARD_ACTIONS, TimeStep, WindyGridworld
+from windy_env import Action, EXTENDED_KINGS_ACTIONS, KINGS_ACTIONS, STANDARD_ACTIONS, TimeStep, WindyGridworld
 
 
 EPSILON = 0.05
@@ -50,8 +50,8 @@ def e_greedy_action(state, possible_actions, q_function, epsilon):
 if __name__ == '__main__':
 	finished_episodes = 0
 
-	env = WindyGridworld(WINDS, HEIGHT, GOAL_POS, KINGS_ACTIONS)
-	q = QFunction(WIDTH, HEIGHT, KINGS_ACTIONS)
+	env = WindyGridworld(WINDS, HEIGHT, GOAL_POS, EXTENDED_KINGS_ACTIONS)
+	q = QFunction(WIDTH, HEIGHT, EXTENDED_KINGS_ACTIONS)
 
 	state = START_STATE
 	action = e_greedy_action(state, env.available_actions(state), q, EPSILON)

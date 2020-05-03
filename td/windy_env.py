@@ -19,6 +19,7 @@ class Action(Enum):
 	UPRIGHT = 5
 	DOWNLEFT = 6
 	DOWNRIGHT = 7
+	NONE = 8
 	
 	def get_movement(self):
 		if self == Action.UP:
@@ -37,6 +38,8 @@ class Action(Enum):
 			return (-1, 1)
 		elif self == Action.DOWNRIGHT:
 			return (1, 1)
+		elif self == Action.NONE:
+			return (0, 0)
 		else:
 			raise AssertionError("Unsupported action type: {}".format(self))
 
@@ -44,6 +47,7 @@ class Action(Enum):
 STANDARD_ACTIONS = set([Action.UP, Action.DOWN, Action.LEFT, Action.RIGHT])
 KINGS_ACTIONS = STANDARD_ACTIONS.union(
 	set([Action.UPLEFT, Action.UPRIGHT, Action.DOWNLEFT, Action.DOWNRIGHT]))
+EXTENDED_KINGS_ACTIONS = KINGS_ACTIONS.union(set([Action.NONE]))
 
 
 @dataclass
