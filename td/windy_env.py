@@ -15,6 +15,10 @@ class Action(Enum):
 	DOWN = 1
 	LEFT = 2
 	RIGHT = 3
+	UPLEFT = 4
+	UPRIGHT = 5
+	DOWNLEFT = 6
+	DOWNRIGHT = 7
 	
 	def get_movement(self):
 		if self == Action.UP:
@@ -25,8 +29,21 @@ class Action(Enum):
 			return (-1, 0)
 		elif self == Action.RIGHT:
 			return (1, 0)
+		elif self == Action.UPLEFT:
+			return (-1, -1)
+		elif self == Action.UPRIGHT:
+			return (1, -1)
+		elif self == Action.DOWNLEFT:
+			return (-1, 1)
+		elif self == Action.DOWNRIGHT:
+			return (1, 1)
 		else:
-			raise ArgumentError("Unsupported action type: {}".format(self))
+			raise AssertionError("Unsupported action type: {}".format(self))
+
+
+STANDARD_ACTIONS = set([Action.UP, Action.DOWN, Action.LEFT, Action.RIGHT])
+KINGS_ACTIONS = STANDARD_ACTIONS.union(
+	set([Action.UPLEFT, Action.UPRIGHT, Action.DOWNLEFT, Action.DOWNRIGHT]))
 
 
 @dataclass
@@ -37,24 +54,37 @@ class TimeStep:
 
 
 class WindyGridworld:
-	def __init__(self, winds, height, goal_pos):
+	def __init__(self, winds, height, goal_pos, action_filter):
 		self._winds = winds
 		self._w = len(winds)
 		self._h = height
 		self._goal = goal_pos
+		self._action_filter = action_filter
 		
 	def available_actions(self, state):
 		actions = set()
+		up_poss = False
+		down_poss = False
 		if state[1] > 0:
 			actions.add(Action.UP)
+			up_poss = True
 		if state[1] < self._h - 1:
 			actions.add(Action.DOWN)
+			down_poss = True
 		if state[0] > 0:
 			actions.add(Action.LEFT)
+			if up_poss:
+				actions.add(Action.UPLEFT)
+			if down_poss:
+				actions.add(Action.DOWNLEFT)
 		if state[0] < self._w - 1:
 			actions.add(Action.RIGHT)
+			if up_poss:
+				actions.add(Action.UPRIGHT)
+			if down_poss:
+				actions.add(Action.DOWNRIGHT)
 		
-		return actions
+		return [action for action in actions if action in self._action_filter]
 
 	def step(self, state, action):
 		assert(action in self.available_actions(state))
