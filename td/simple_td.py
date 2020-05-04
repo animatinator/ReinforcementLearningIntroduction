@@ -117,9 +117,20 @@ def run_n_step_td(values, n):
 		n_step_update(past_results, values)
 
 
+def moving_average(values, n):
+	results = [0] * len(values)
+	for i in range(1, len(values)):
+		real_n = min(i, n)
+		moving_val = float(sum(values[i-real_n:i])) / float(real_n)
+		results[i] = moving_val
+
+	return results
+
+
 def plot_errors(errors):
+	ys = moving_average(errors, 30)
 	xs = [i for i in range(len(errors))]
-	pyplot.scatter(xs, errors)
+	pyplot.scatter(xs, ys)
 	pyplot.show()
 
 
