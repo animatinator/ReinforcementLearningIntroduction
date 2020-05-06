@@ -86,35 +86,41 @@ def run_td(values):
 		state = step.state
 
 
-def n_step_update(past_results, values):
+# fix_values is as specified in the comment on run_n_step_td.
+def n_step_update(past_results, values, fix_values):
 	state_to_update = past_results[0][0]
+	# Potentially use old values.
+	read_values = past_results[0][2] if fix_values else values
 	latest_state = past_results[-1][0]
 	past_results.pop(0)
-	latest_estimate = get_value(latest_state, values)
+	latest_estimate = get_value(latest_state, read_values)
 	reward_sum = sum([entry[1] for entry in past_results]) + latest_estimate
 	old_val = get_value(state_to_update, values)
 	new_val = old_val + ALPHA * (reward_sum - old_val)
 	update_value(state_to_update, values, new_val)
 
 
-def run_n_step_td(values, n):
+# fix_values specifies that an update to a state should use the state values
+# from the time the state was reached (ignoring subsequent updates). This is
+# less accurate, but is exercise 7.2 in Reinforcement Learning: An Introduction.
+def run_n_step_td(values, n, fix_values=False):
 	state = START_STATE
 	step = TimeStep(START_STATE, 0, False)
 
-	past_results = [(START_STATE, 0)]
+	past_results = [(START_STATE, 0, values.copy())]
 
 	while not step.terminal:
 		action = Action(random.randint(0, len(Action) - 1))
 		step = make_step(state, action)
-		past_results.append((step.state, step.reward))
+		past_results.append((step.state, step.reward, values.copy()))
 
 		if len(past_results) > n + 1:
-			n_step_update(past_results, values)
+			n_step_update(past_results, values, fix_values)
 
 		state = step.state
 
 	while past_results:
-		n_step_update(past_results, values)
+		n_step_update(past_results, values, fix_values)
 
 
 def moving_average(values, n):
@@ -134,25 +140,20 @@ def plot_errors(errors):
 	pyplot.show()
 
 
-if __name__ == '__main__':
+def run_and_evaluate_td_method(method, name):
 	values = [0.5] * 5
 	errors = []
 
 	for i in range(0, TRAIN_STEPS):
-		run_td(values)
+		method(values)
 		errors.append(rms_error(values))
 
-	print("Simple TD result: {}".format(values))
+	print("{} result: {}".format(name, values))
 	print("Drawing error graph...")
 	plot_errors(errors)
 
-	n_step_values = [0.5] * 5
-	errors = []
 
-	for i in range(0, TRAIN_STEPS):
-		run_n_step_td(n_step_values, N)
-		errors.append(rms_error(n_step_values))
-
-	print("{}-step TD result: {}".format(N, n_step_values))
-	print("Drawing error graph...")
-	plot_errors(errors)
+if __name__ == '__main__':
+	run_and_evaluate_td_method(run_td, "Simple TD")
+	run_and_evaluate_td_method(lambda values: run_n_step_td(values, N), "{}-step TD".format(N))
+	run_and_evaluate_td_method(lambda values: run_n_step_td(values, N, True), "{}-step TD".format(N))
