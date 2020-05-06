@@ -12,14 +12,14 @@ import random
 
 
 # The number of non-terminal states
-STATES = 5
+STATES = 15
 # The state to start in (zero-based index, including left terminal).
 START_STATE = 3
 
 ALPHA = 0.05
 TRAIN_STEPS = 10000
-N_STEP_ALPHA = 0.15
-N = 3
+N_STEP_ALPHA = 0.4
+N = 4
 
 
 @dataclass
@@ -141,7 +141,7 @@ def plot_errors(errors):
 
 
 def run_and_evaluate_td_method(method, name):
-	values = [0.5] * 5
+	values = [0.5] * STATES
 	errors = []
 
 	for i in range(0, TRAIN_STEPS):
