@@ -1,8 +1,16 @@
 # A simple 2D maze environment.
 # The maze is parsed from maze.txt.
 
+from dataclasses import dataclass
 from enum import Enum
 import os
+
+
+@dataclass
+class TimeStep:
+	state: (int, int)
+	reward: float
+	terminal: bool = False
 
 
 class Action(Enum):
@@ -49,7 +57,11 @@ class MazeEnvironment:
 	def step(self, state, action):
 		assert(action in self.valid_actions(state))
 		
-		return self._apply_action(state, action)
+		state = self._apply_action(state, action)
+		if state == self._g:
+			return TimeStep(state, 1.0, True)
+		else:
+			return TimeStep(state, 0.0)
 
 
 def parse_grid_from_file(file_path):
@@ -92,4 +104,5 @@ if __name__ == '__main__':
 	assert(maze.valid_actions((8, 1)) == set([Action.UP, Action.DOWN]))
 	assert(maze.valid_actions((4, 4)) == set([Action.UP, Action.DOWN, Action.LEFT]))
 
-	assert(maze.step((8, 1), Action.UP) == (8, 0))
+	assert(maze.step((4, 4), Action.LEFT) == TimeStep((3, 4), 0.0, False))
+	assert(maze.step((8, 1), Action.UP) == TimeStep((8, 0), 1.0, True))
