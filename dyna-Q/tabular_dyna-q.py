@@ -2,6 +2,7 @@
 # Based on Sutton & Barto example 8.1.
 
 from dataclasses import dataclass
+import matplotlib.pyplot as plt
 from maze_env import Action, parse_maze_from_file
 import numpy as np
 import random
@@ -11,7 +12,7 @@ EPSILON = 0.1
 DISCOUNT = 0.95
 LEARNING_RATE = 0.2
 TRAIN_STEPS = 2000
-PLAN_STEPS = 5
+PLAN_STEPS_OPTIONS = [0, 5, 10, 50]
 
 
 class QFunction:
@@ -123,7 +124,28 @@ def train_and_evaluate(maze, train_steps, plan_steps):
 	return steps_per_episode
 
 
+# For a list of planning_steps values, train and evaluate models in the maze
+# for each number of planning steps and graph their time taken to complete each
+# successive episode over time.
+def compare_planning_levels(maze, levels):
+	steps_per_episode_records = []
+	for plan_steps in levels:
+		steps_per_episode = train_and_evaluate(maze, TRAIN_STEPS, plan_steps)
+		steps_per_episode_records.append(steps_per_episode)
+
+	# More successful model-based methods will have completed more episodes.
+	# Cut them all down to the lowest number of completed episodes for graph
+	# clarity.
+	min_length = len(min(steps_per_episode_records, key=len))
+	steps_per_episode_records = [record[:min_length] for record in steps_per_episode_records]
+	xs = [i for i in range(min_length)]
+
+	for record in steps_per_episode_records:
+		plt.plot(xs, record)
+
+	plt.show()
+
+
 if __name__ == '__main__':
 	maze = parse_maze_from_file('maze.txt')
-	steps_per_episode = train_and_evaluate(maze, TRAIN_STEPS, PLAN_STEPS)
-	print(steps_per_episode)
+	compare_planning_levels(maze, PLAN_STEPS_OPTIONS)
