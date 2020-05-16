@@ -10,8 +10,8 @@ import random
 EPSILON = 0.1
 DISCOUNT = 0.95
 LEARNING_RATE = 0.2
-TRAIN_STEPS = 10000
-PLAN_STEPS = 1
+TRAIN_STEPS = 2000
+PLAN_STEPS = 5
 
 
 class QFunction:
@@ -53,12 +53,24 @@ class ModelEntry:
 class Model:
 	def __init__(self, width, height):
 		self._m = [[[None for action in Action] for x in range(width)] for y in range(height)]
+		self._visited = set()
 	
 	def get_value(self, state, action):
 		return self._m[state[1]][state[0]][action.value]
 	
 	def set_value(self, state, action, new_state, reward):
+		self._visited.add(state)
 		self._m[state[1]][state[0]][action.value] = ModelEntry(new_state, reward)
+
+	def select_visited_s_a_pair(self):
+		# Sadly, this is much the same as the awful optimal_action method in
+		# QValue. Should really do this sort of thing better in future, but for
+		# now I am hacking so copy-paste-debug is yes.
+		state = random.sample(self._visited, 1)[0]
+		action_models = self._m[state[1]][state[0]]
+		linked_to_actions = np.array([(val, Action(i)) for i, val in enumerate(action_models) if val])
+		action = random.choice(linked_to_actions)[1]
+		return (state, action)
 
 
 def train_and_evaluate(maze, train_steps, plan_steps):
@@ -88,7 +100,18 @@ def train_and_evaluate(maze, train_steps, plan_steps):
 		model.set_value(state, action, state_1, reward)
 
 		for i in range(plan_steps):
-			pass # TODO
+			# The naming scheme got wildly out of hand, sorry.
+			plan_s, plan_a = model.select_visited_s_a_pair()
+
+			step = model.get_value(plan_s, plan_a)
+			plan_s_1 = step.state
+			plan_r = step.reward
+
+			plan_q_s_a = q.get_value(plan_s, plan_a)
+			plan_a_1 = q.optimal_action(plan_s_1, maze.valid_actions(plan_s_1))
+			plan_q_s1_a1 = q.get_value(plan_s_1, plan_a_1)
+			new_plan_q_s_a = plan_q_s_a + LEARNING_RATE * (plan_r + (DISCOUNT * plan_q_s1_a1) - plan_q_s_a)
+			q.set_value(plan_s, plan_a, new_plan_q_s_a)
 
 		state = state_1
 
