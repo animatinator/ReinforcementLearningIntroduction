@@ -33,7 +33,7 @@ class MazeEnvironment:
 		return (self._w, self._h)
 
 	def reset(self):
-		return self._s
+		return TimeStep(self._s, 0.0)
 
 	def _is_space(self, state):
 		in_bounds = state[0] >= 0 and state[1] >= 0 and state[0] < self._w  and state[1] < self._h
@@ -61,7 +61,7 @@ class MazeEnvironment:
 	def step(self, state, action):
 		# If we're already at the goal, return the start state with zero reward.
 		if state == self._g:
-			return TimeStep(self.S, 0.0, False)
+			return TimeStep(self._s, 0.0, False)
 
 		assert(action in self.valid_actions(state))
 		

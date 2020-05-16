@@ -83,7 +83,7 @@ def train_and_evaluate(maze, train_steps, plan_steps):
 	steps_per_episode = []
 	cur_episode_steps = 0
 
-	state = maze.reset()
+	state = maze.reset().state
 
 	for step in range(train_steps):
 		action = e_greedy_action(state, maze.valid_actions(state), q, EPSILON)
@@ -93,6 +93,7 @@ def train_and_evaluate(maze, train_steps, plan_steps):
 		state_1 = timestep.state
 		reward = timestep.reward
 
+		# One-step Q-learning on this transition.
 		q_s_a = q.get_value(state, action)
 		action_1 = q.optimal_action(state_1, maze.valid_actions(state_1))
 		q_s1_a1 = q.get_value(state_1, action_1)
@@ -100,14 +101,18 @@ def train_and_evaluate(maze, train_steps, plan_steps):
 		q.set_value(state, action, new_q_s_a)
 		model.set_value(state, action, state_1, reward)
 
+		# Run plan_steps iterations of planning.
+		# The naming scheme got wildly out of hand, sorry.
 		for i in range(plan_steps):
-			# The naming scheme got wildly out of hand, sorry.
+			# Pick a visited state and action.
 			plan_s, plan_a = model.select_visited_s_a_pair()
 
+			# Ask the model what state and reward we'd get from that s-a pair.
 			step = model.get_value(plan_s, plan_a)
 			plan_s_1 = step.state
 			plan_r = step.reward
 
+			# One-step Q-learning on the modelled transition.
 			plan_q_s_a = q.get_value(plan_s, plan_a)
 			plan_a_1 = q.optimal_action(plan_s_1, maze.valid_actions(plan_s_1))
 			plan_q_s1_a1 = q.get_value(plan_s_1, plan_a_1)
@@ -116,9 +121,10 @@ def train_and_evaluate(maze, train_steps, plan_steps):
 
 		state = state_1
 
+		# Reset the state when we reach the end of an episode.
 		if timestep.terminal:
 			steps_per_episode.append(cur_episode_steps)
-			state = maze.reset()
+			state = maze.reset().state
 			cur_episode_steps = 0
 
 	return steps_per_episode
