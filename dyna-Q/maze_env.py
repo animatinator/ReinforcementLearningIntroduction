@@ -15,9 +15,9 @@ class TimeStep:
 
 @unique
 class Action(Enum):
-	UP = 0,
-	DOWN = 1,
-	LEFT = 2,
+	UP = 0
+	DOWN = 1
+	LEFT = 2
 	RIGHT = 3
 
 
@@ -59,6 +59,10 @@ class MazeEnvironment:
 		return actions
 
 	def step(self, state, action):
+		# If we're already at the goal, return the start state with zero reward.
+		if state == self._g:
+			return TimeStep(self.S, 0.0, False)
+
 		assert(action in self.valid_actions(state))
 		
 		state = self._apply_action(state, action)
