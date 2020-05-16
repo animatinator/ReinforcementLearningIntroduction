@@ -1,8 +1,8 @@
 # A simple 2D maze environment.
-# The maze is parsed from maze.txt.
+# The maze is parsed from a text file.
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import Enum, unique
 import os
 
 
@@ -13,6 +13,7 @@ class TimeStep:
 	terminal: bool = False
 
 
+@unique
 class Action(Enum):
 	UP = 0,
 	DOWN = 1,
@@ -27,6 +28,9 @@ class MazeEnvironment:
 		self._g = goal_pos
 		self._w = len(self._grid[0])
 		self._h = len(self._grid)
+
+	def dimensions(self):
+		return (self._w, self._h)
 
 	def reset(self):
 		return self._s
@@ -64,7 +68,7 @@ class MazeEnvironment:
 			return TimeStep(state, 0.0)
 
 
-def parse_grid_from_file(file_path):
+def parse_maze_from_file(file_path):
 	layout = []
 	start = (-1, -1)
 	goal = (-1, -1)
@@ -96,7 +100,7 @@ def parse_grid_from_file(file_path):
 
 	
 if __name__ == '__main__':
-	maze = parse_grid_from_file("maze.txt")
+	maze = parse_maze_from_file("maze.txt")
 
 	assert(maze.reset() == (0, 2))
 
