@@ -159,4 +159,3 @@ if __name__ == '__main__':
 	# Reset and verify that the layout changed.
 	assert(dynamic_maze.reset().state == (9, 4))
 	assert(dynamic_maze.valid_actions((9, 3)) == set([Action.UP, Action.DOWN, Action.LEFT]))
-	
