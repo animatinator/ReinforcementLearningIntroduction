@@ -2,6 +2,7 @@
 # deal with changes in the environment.
 
 from dataclasses import dataclass
+import math
 import matplotlib.pyplot as plt
 from maze_env import Action, parse_maze_from_file, MazeEnvironment, DynamicMazeEnvironment
 import numpy as np
@@ -12,7 +13,8 @@ EPSILON = 0.1
 DISCOUNT = 0.95
 LEARNING_RATE = 0.2
 TRAIN_STEPS = 2000
-PLAN_STEPS = 10
+PLAN_STEPS = 20
+INFREQUENT_REWARD_SCALING_FACTOR = 0.005
 
 MAZE_UNBLOCKED_FILE = 'maze_unblocked.txt'
 MAZE_BLOCKED_FILE = 'maze.txt'
@@ -52,19 +54,28 @@ def e_greedy_action(state, possible_actions, q_function, epsilon):
 class ModelEntry:
 	state: (int, int)
 	reward: float
+	last_visit: int
 
 
 class Model:
-	def __init__(self, width, height):
-		self._m = [[[None for action in Action] for x in range(width)] for y in range(height)]
+	def __init__(self, width, height, amplify_infrequent_rewards = False):
+		self._w = width
+		self._h = height
+		self._m = [[[ModelEntry((x, y), 0, 0) for action in Action] for x in range(width)] for y in range(height)]
 		self._visited = set()
+		self._time = 0
+		self._amplify_infrequent_rewards = amplify_infrequent_rewards
 	
 	def get_value(self, state, action):
-		return self._m[state[1]][state[0]][action.value]
+		step = self._m[state[1]][state[0]][action.value]
+		if self._amplify_infrequent_rewards:
+			step.reward += INFREQUENT_REWARD_SCALING_FACTOR * math.sqrt(float(self._time - step.last_visit))
+		return step
 	
 	def set_value(self, state, action, new_state, reward):
 		self._visited.add(state)
-		self._m[state[1]][state[0]][action.value] = ModelEntry(new_state, reward)
+		self._m[state[1]][state[0]][action.value] = ModelEntry(new_state, reward, self._time)
+		self._time += 1
 
 	def select_visited_s_a_pair(self):
 		# Sadly, this is much the same as the awful optimal_action method in
@@ -76,11 +87,19 @@ class Model:
 		action = random.choice(linked_to_actions)[1]
 		return (state, action)
 
+	# Select a potentially unvisited state-action pair.
+	# (See constructor - unvisited state-action pairs are assumed to return to
+	# the starting state with reward zero.)
+	def select_s_a_pair(self):
+		state = (random.choice(range(0, self._w)), random.choice(range(0, self._h)))
+		action = random.choice([action for action in Action])
+		return (state, action)
 
-def train_and_evaluate(maze, train_steps, plan_steps):
+
+def train_and_evaluate(maze, train_steps, plan_steps, amplify_infrequent_rewards=False):
 	width, height = maze.dimensions()
 	q = QFunction(width, height)
-	model = Model(width, height)
+	model = Model(width, height, amplify_infrequent_rewards)
 
 	# Here we'll record the number of steps taken for each completed episode.
 	steps_per_episode = []
@@ -108,7 +127,9 @@ def train_and_evaluate(maze, train_steps, plan_steps):
 		# The naming scheme got wildly out of hand, sorry.
 		for i in range(plan_steps):
 			# Pick a visited state and action.
-			plan_s, plan_a = model.select_visited_s_a_pair()
+			# If we're using the modified algorithm that boosts rewards for
+			# states not recently visited, pick /any/ state-action pair.
+			plan_s, plan_a = model.select_s_a_pair() if amplify_infrequent_rewards else model.select_visited_s_a_pair()
 
 			# Ask the model what state and reward we'd get from that s-a pair.
 			step = model.get_value(plan_s, plan_a)
@@ -134,14 +155,26 @@ def train_and_evaluate(maze, train_steps, plan_steps):
 
 
 def evaluate_and_plot(maze):
-	steps_per_episode = train_and_evaluate(maze, TRAIN_STEPS, PLAN_STEPS)
-	xs = [i for i in range(len(steps_per_episode))]
-	plt.plot(xs, steps_per_episode)
+	plots = []
+
+	# Normal Dyna-Q.
+	plots.append(train_and_evaluate(maze, TRAIN_STEPS, PLAN_STEPS, False))
+	maze.reset_dynamics()
+	# Amplify rewards on states not visited in some time and allow planning to
+	# consider unvisited state-action pairs.
+	plots.append(train_and_evaluate(maze, TRAIN_STEPS, PLAN_STEPS, True))
+
+	min_length = len(min(plots, key=len))
+	plots = [record[:min_length] for record in plots]
+	xs = [i for i in range(min_length)]
+
+	for record in plots:
+		plt.plot(xs, record)
 	plt.show()
 
 
 if __name__ == '__main__':
 	unblocked_layout = parse_maze_from_file(MAZE_UNBLOCKED_FILE)
 	blocked_layout = parse_maze_from_file(MAZE_BLOCKED_FILE)
-	maze = DynamicMazeEnvironment([(0, unblocked_layout), (60, blocked_layout)])
+	maze = DynamicMazeEnvironment([(0, unblocked_layout), (20, blocked_layout)])
 	evaluate_and_plot(maze)

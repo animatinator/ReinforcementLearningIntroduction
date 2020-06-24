@@ -29,7 +29,7 @@ class MazeLayout:
 	goal: (int, int)
 	
 	def dimensions(self):
-		return(len(self.grid[0]), len(self.grid[1]))
+		return(len(self.grid[0]), len(self.grid))
 	
 	def in_bounds(self, pos):
 		return pos[0] >= 0 and pos[1] >= 0 and pos[0] < len(self.grid[0]) and pos[1] < len(self.grid)
@@ -97,16 +97,22 @@ class DynamicMazeEnvironment(MazeEnvironment):
 		assert layout_keyframes[0][0] == 0, "First keyframe must have a wait duration of zero."
 
 		super().__init__(layout_keyframes[0][1])
-		self._keyframes = layout_keyframes[1:]
-		self.frame_counter = 0
+		self._original_keyframes = layout_keyframes
+		self._keyframes = layout_keyframes[1:].copy()
+		self._frame_counter = 0
 	
 	def reset(self):
-		self.frame_counter += 1
-		if self._keyframes and self.frame_counter == self._keyframes[0][0]:
+		self._frame_counter += 1
+		if self._keyframes and self._frame_counter == self._keyframes[0][0]:
 			self._layout = self._keyframes[0][1]
 			self._keyframes = self._keyframes[1:]
-			self.frame_counter = 0
+			self._frame_counter = 0
 		return super().reset()
+
+	def reset_dynamics(self):
+		self._frame_counter = 0
+		self._layout = self._original_keyframes[0][1]
+		self._keyframes = self._original_keyframes[1:].copy()
 
 
 def parse_maze_from_file(file_path):
@@ -159,3 +165,7 @@ if __name__ == '__main__':
 	# Reset and verify that the layout changed.
 	assert(dynamic_maze.reset().state == (9, 4))
 	assert(dynamic_maze.valid_actions((9, 3)) == set([Action.UP, Action.DOWN, Action.LEFT]))
+
+	# Reset the dynamics and verify that the maze is back to the way it was to begin with.
+	dynamic_maze.reset_dynamics()
+	assert(dynamic_maze.valid_actions((9, 3)) == set([Action.DOWN, Action.LEFT]))
