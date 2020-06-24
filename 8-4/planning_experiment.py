@@ -30,7 +30,9 @@ class QFunction:
 	def set_value(self, state, action, value):
 		self._q[state[1]][state[0]][action.value] = value
 
-	def optimal_action(self, state, possible_actions):
+	def optimal_action(self, state, possible_actions, action_specific_boosts=None):
+		if not action_specific_boosts:
+			action_specific_boosts = {action: 0.0 for action in possible_actions}
 		# Absolute mess. Trying to get the maximum action from the possible actions.
 		# First get the Q-values, and bind them with the actions they represent, ie.
 		# (Q-value, Action).
@@ -39,6 +41,8 @@ class QFunction:
 		# Filter down to the actions that are possible.
 		possibility_filter = np.isin(linked_to_actions[:, 1], list(possible_actions))
 		possible_options = linked_to_actions[possibility_filter]
+		# Add action-specific boosts to the Q-values before picking the best one.
+		possible_options = np.array([(val + action_specific_boosts[action], action) for val, action in possible_options])
 		# Return the action corresponding to the maximum Q-value.
 		return possible_options[np.argmax(possible_options[:, 0])][1]
 
@@ -66,16 +70,23 @@ class Model:
 		self._time = 0
 		self._amplify_infrequent_rewards = amplify_infrequent_rewards
 	
+	def _infrequent_reward_boost(self, model_entry):
+		return INFREQUENT_REWARD_SCALING_FACTOR * math.sqrt(float(self._time - model_entry.last_visit))
+
 	def get_value(self, state, action):
 		step = self._m[state[1]][state[0]][action.value]
 		if self._amplify_infrequent_rewards:
-			step.reward += INFREQUENT_REWARD_SCALING_FACTOR * math.sqrt(float(self._time - step.last_visit))
+			step.reward += self._infrequent_reward_boost(step)
 		return step
 	
 	def set_value(self, state, action, new_state, reward):
 		self._visited.add(state)
 		self._m[state[1]][state[0]][action.value] = ModelEntry(new_state, reward, self._time)
 		self._time += 1
+
+	def get_infrequent_reward_boost(self, state, action):
+		step = self._m[state[1]][state[0]][action.value]
+		return self._infrequent_reward_boost(step)
 
 	def select_visited_s_a_pair(self):
 		# Sadly, this is much the same as the awful optimal_action method in
@@ -96,7 +107,7 @@ class Model:
 		return (state, action)
 
 
-def train_and_evaluate(maze, train_steps, plan_steps, amplify_infrequent_rewards=False):
+def train_and_evaluate(maze, train_steps, plan_steps, amplify_infrequent_rewards=False, amplify_infrequent_action_values=False):
 	width, height = maze.dimensions()
 	q = QFunction(width, height)
 	model = Model(width, height, amplify_infrequent_rewards)
@@ -117,7 +128,9 @@ def train_and_evaluate(maze, train_steps, plan_steps, amplify_infrequent_rewards
 
 		# One-step Q-learning on this transition.
 		q_s_a = q.get_value(state, action)
-		action_1 = q.optimal_action(state_1, maze.valid_actions(state_1))
+		valid_actions = maze.valid_actions(state_1)
+		action_specific_boosts = {action: model.get_infrequent_reward_boost(state, action) for action in valid_actions} if amplify_infrequent_action_values else None
+		action_1 = q.optimal_action(state_1, valid_actions, action_specific_boosts)
 		q_s1_a1 = q.get_value(state_1, action_1)
 		new_q_s_a = q_s_a + LEARNING_RATE * (reward + (DISCOUNT * q_s1_a1) - q_s_a)
 		q.set_value(state, action, new_q_s_a)
@@ -158,11 +171,15 @@ def evaluate_and_plot(maze):
 	plots = []
 
 	# Normal Dyna-Q.
-	plots.append(train_and_evaluate(maze, TRAIN_STEPS, PLAN_STEPS, False))
+	plots.append(train_and_evaluate(maze, TRAIN_STEPS, PLAN_STEPS))
 	maze.reset_dynamics()
 	# Amplify rewards on states not visited in some time and allow planning to
 	# consider unvisited state-action pairs.
-	plots.append(train_and_evaluate(maze, TRAIN_STEPS, PLAN_STEPS, True))
+	plots.append(train_and_evaluate(maze, TRAIN_STEPS, PLAN_STEPS, amplify_infrequent_rewards=True))
+	maze.reset_dynamics()
+	# Amplify Q-values of actions not taken in some time when selecting
+	# actions (not when planning).
+	plots.append(train_and_evaluate(maze, TRAIN_STEPS, PLAN_STEPS, amplify_infrequent_action_values=True))
 
 	min_length = len(min(plots, key=len))
 	plots = [record[:min_length] for record in plots]
