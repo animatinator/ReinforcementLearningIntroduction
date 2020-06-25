@@ -44,7 +44,7 @@ class Tiling1D:
 		
 		for i, offset in enumerate(self._offsets):
 			tile_index = int((x - offset) / self._tile_width)
-			self._weights[i, tile_index] += rate * (value - self._weights[i, tile_index])
+			self._weights[i, tile_index] += rate * (value - self.sample(x))
 
 
 class Tiling2D:
@@ -77,7 +77,7 @@ class Tiling2D:
 
 		return result
 
-	def learn_from_sample(self, x, value):
+	def learn_from_sample(self, x, y, value):
 		assert 0.0 <= x <= 1.0, "X must be in the range [0, 1]"
 		assert 0.0 <= y <= 1.0, "Y must be in the range [0, 1]"
 
@@ -86,7 +86,7 @@ class Tiling2D:
 		for i, offset in enumerate(self._offsets):
 			tile_x = int((x - offset[0]) / self._tile_width)
 			tile_y = int((y - offset[1]) / self._tile_width)
-			self._weights[i, tile_x, tile_y] += rate * (value - self._weights[i, tile_x, tile_y])
+			self._weights[i, tile_x, tile_y] += rate * (value - self.sample(x, y))
 
 
 def train_approximation(approximation, fn):
