@@ -18,7 +18,7 @@ class Tiling1D:
 		assert all(elem <= 0 for elem in tile_offsets), "All tile offsets must be <= 0"
 
 		self._tile_width = tile_width
-		self._offsets = tile_offsets
+		self._offsets = [offset * tile_width for offset in tile_offsets]
 		# Per the above assumption, add an extra tile to the end to ensure we
 		# cover the whole range.
 		self._num_tiles_per_tiling = int(1.0 / tile_width) + 1
@@ -61,7 +61,7 @@ def graph_approximation(approximation, resolution):
 
 
 if __name__ == '__main__':
-	tiling = Tiling1D(0.2, [0.0, -0.1, -0.15, -0.04, -0.12])
+	tiling = Tiling1D(0.1, [0.0, -0.5, -0.3, -0.7, -0.2])
 	train_approximation(tiling, functions.sine_1d)
 	graph_approximation(tiling, PLOT_RESOLUTION)
 	#tiling = Tiling1D(0.2, [0.0, -0.1, -0.15])
