@@ -5,14 +5,16 @@ from dataclasses import dataclass
 import matplotlib.pyplot as plt
 from maze_env import Action, parse_maze_from_file
 import numpy as np
+import pdb
 import random
 
 
 EPSILON = 0.1
 DISCOUNT = 0.95
 LEARNING_RATE = 0.2
-TRAIN_STEPS = 1000
+TRAIN_STEPS = 4000
 PLAN_STEPS = 10
+NUM_RUNS = 3
 
 
 class QFunction:
@@ -53,12 +55,19 @@ class ModelEntry:
 
 class Model:
 	def __init__(self, width, height):
-		self._m = [[[None for action in Action] for x in range(width)] for y in range(height)]
+		self._m = [[[ModelEntry((x, y), 0) for action in Action] for x in range(width)] for y in range(height)]
 		self._visited = set()
-	
+		self._start_state = (0, 0)
+
+	def get_start_state(self):
+		return self._start_state
+
+	def set_start_state(self, state):
+		self._start_state = state
+
 	def get_value(self, state, action):
 		return self._m[state[1]][state[0]][action.value]
-	
+
 	def set_value(self, state, action, new_state, reward):
 		self._visited.add(state)
 		self._m[state[1]][state[0]][action.value] = ModelEntry(new_state, reward)
@@ -74,7 +83,7 @@ class Model:
 		return (state, action)
 
 
-def train_and_evaluate(maze, train_steps, plan_steps):
+def train_and_evaluate(maze, train_steps, plan_steps, trajectory_sampling=False):
 	width, height = maze.dimensions()
 	q = QFunction(width, height)
 	model = Model(width, height)
@@ -84,6 +93,7 @@ def train_and_evaluate(maze, train_steps, plan_steps):
 	cur_episode_steps = 0
 
 	state = maze.reset().state
+	model.set_start_state(state)
 
 	for step in range(train_steps):
 		action = e_greedy_action(state, maze.valid_actions(state), q, EPSILON)
@@ -101,11 +111,17 @@ def train_and_evaluate(maze, train_steps, plan_steps):
 		q.set_value(state, action, new_q_s_a)
 		model.set_value(state, action, state_1, reward)
 
+		plan_s = model.get_start_state()
+
 		# Run plan_steps iterations of planning.
 		# The naming scheme got wildly out of hand, sorry.
 		for i in range(plan_steps):
-			# Pick a visited state and action.
-			plan_s, plan_a = model.select_visited_s_a_pair()
+			if trajectory_sampling:
+				# Choose an action according to the current policy.
+				plan_a = e_greedy_action(plan_s, maze.valid_actions(plan_s), q, EPSILON)
+			else:
+				# Pick a visited state and action.
+				plan_s, plan_a = model.select_visited_s_a_pair()
 
 			# Ask the model what state and reward we'd get from that s-a pair.
 			step = model.get_value(plan_s, plan_a)
@@ -119,6 +135,9 @@ def train_and_evaluate(maze, train_steps, plan_steps):
 			new_plan_q_s_a = plan_q_s_a + LEARNING_RATE * (plan_r + (DISCOUNT * plan_q_s1_a1) - plan_q_s_a)
 			q.set_value(plan_s, plan_a, new_plan_q_s_a)
 
+			# Take the step so that trajectory-base sampling can continue.
+			plan_s = plan_s_1
+
 		state = state_1
 
 		# Reset the state when we reach the end of an episode.
@@ -130,15 +149,31 @@ def train_and_evaluate(maze, train_steps, plan_steps):
 	return steps_per_episode
 
 
+def trim_to_same_length(lists):
+	min_length = len(min(lists, key=len))
+	lists = [list[:min_length] for list in lists]
+	return lists
+
+
+def average_over_n_runs(fn, num_runs):
+	steps_per_episode_records = []
+
+	for run in range(num_runs):
+		steps_per_episode_records.append(fn())
+
+	steps_per_episode_records = trim_to_same_length(steps_per_episode_records)
+	return [sum(values) / len(values) for values in zip(*steps_per_episode_records)]
+
+
 def run_experiment(maze):
 	steps_per_episode_records = []
-	steps_per_episode_records.append(train_and_evaluate(maze, TRAIN_STEPS, PLAN_STEPS))
+	steps_per_episode_records.append(average_over_n_runs(lambda: train_and_evaluate(maze, TRAIN_STEPS, PLAN_STEPS), NUM_RUNS))
+	steps_per_episode_records.append(average_over_n_runs(lambda: train_and_evaluate(maze, TRAIN_STEPS, PLAN_STEPS, trajectory_sampling=True), NUM_RUNS))
 
 	# More successful methods will have completed more episodes. Cut them all
 	# down to the lowest number of completed episodes for graph clarity.
-	min_length = len(min(steps_per_episode_records, key=len))
-	steps_per_episode_records = [record[:min_length] for record in steps_per_episode_records]
-	xs = [i for i in range(min_length)]
+	steps_per_episode_records = trim_to_same_length(steps_per_episode_records)
+	xs = [i for i in range(len(steps_per_episode_records[0]))]
 
 	for record in steps_per_episode_records:
 		plt.plot(xs, record)
