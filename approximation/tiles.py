@@ -52,7 +52,7 @@ class Tiling2D:
 		assert len(tile_offsets) > 0, "Must specify at least one tile offset"
 		# It's more convenient to assume tilings all start /before/ the
 		# beginning of the range
-		assert all(elem <= 0 for elem in tile_offsets), "All tile offsets must be <= 0"
+		assert all(all(dim <= 0 for dim in elem) for elem in tile_offsets), "All tile offsets must be <= 0"
 
 		self._tile_width = tile_width
 		self._offsets = [(x * tile_width, y * tile_width) for (x, y) in tile_offsets]
@@ -89,25 +89,39 @@ class Tiling2D:
 			self._weights[i, tile_x, tile_y] += rate * (value - self.sample(x, y))
 
 
-def train_approximation(approximation, fn):
+def train_1d_approximation(approximation, fn):
 	for i in range(TRAIN_STEPS):
-		x, value = functions.sample(fn)
+		x, value = functions.sample_1d(fn)
 		approximation.learn_from_sample(x, value)
 
 
-def graph_approximation(approximation, resolution):
+def graph_1d_approximation(approximation, resolution):
 	xs = [float(i) / float(resolution) for i in range(resolution + 1)]
 	values = [approximation.sample(x) for x in xs]
 	plt.plot(xs, values)
 	plt.show()
 
 
+def train_2d_approximation(approximation, fn):
+	for i in range(TRAIN_STEPS):
+		x, y, value = functions.sample_2d(fn)
+		approximation.learn_from_sample(x, y, value)
+
+
+def graph_2d_approximation(approximation, resolution):
+	xs = [float(i) / float(resolution) for i in range(resolution + 1)]
+	ys = [float(i) / float(resolution) for i in range(resolution + 1)]
+	xx, yy = np.meshgrid(xs, ys)
+	f = np.vectorize(approximation.sample)(xx, yy)
+	plt.imshow(f, interpolation='nearest')
+	plt.show()
+
+
 if __name__ == '__main__':
 	tiling = Tiling1D(0.1, [0.0, -0.5, -0.3, -0.7, -0.2])
-	train_approximation(tiling, functions.sine_1d)
-	graph_approximation(tiling, PLOT_RESOLUTION)
+	train_1d_approximation(tiling, functions.sine_1d)
+	graph_1d_approximation(tiling, PLOT_RESOLUTION)
 
-	tiling = Tiling1D(0.1, [0.0, -0.5, -0.3, -0.7, -0.2])
-	train_approximation(tiling, functions.step_1d)
-	graph_approximation(tiling, PLOT_RESOLUTION)
-	#tiling = Tiling1D(0.2, [0.0, -0.1, -0.15])
+	tiling = Tiling2D(0.1, [(0.0, 0.0), (-0.1, -0.3), (-0.5, -0.7), (-0.45, -0.1), (-0.8, -0.23)])
+	train_2d_approximation(tiling, functions.ripple_2d)
+	graph_2d_approximation(tiling, PLOT_RESOLUTION)
