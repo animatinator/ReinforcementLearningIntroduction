@@ -12,7 +12,7 @@ import random
 EPSILON = 0.1
 DISCOUNT = 0.95
 LEARNING_RATE = 0.2
-TRAIN_STEPS = 4000
+TRAIN_STEPS = 10000
 PLAN_STEPS = 10
 NUM_RUNS = 3
 
@@ -56,6 +56,8 @@ class ModelEntry:
 class Model:
 	def __init__(self, width, height):
 		self._m = [[[ModelEntry((x, y), 0) for action in Action] for x in range(width)] for y in range(height)]
+		self._w = width
+		self._h = height
 		self._visited = set()
 		self._start_state = (0, 0)
 
@@ -80,6 +82,14 @@ class Model:
 		action_models = self._m[state[1]][state[0]]
 		linked_to_actions = np.array([(val, Action(i)) for i, val in enumerate(action_models) if val])
 		action = random.choice(linked_to_actions)[1]
+		return (state, action)
+
+	# Select a potentially unvisited state-action pair.
+	# (See constructor - unvisited state-action pairs are assumed to return to
+	# the starting state with reward zero.)
+	def select_s_a_pair(self):
+		state = (random.choice(range(0, self._w)), random.choice(range(0, self._h)))
+		action = random.choice([action for action in Action])
 		return (state, action)
 
 
@@ -121,7 +131,7 @@ def train_and_evaluate(maze, train_steps, plan_steps, trajectory_sampling=False)
 				plan_a = e_greedy_action(plan_s, maze.valid_actions(plan_s), q, EPSILON)
 			else:
 				# Pick a visited state and action.
-				plan_s, plan_a = model.select_visited_s_a_pair()
+				plan_s, plan_a = model.select_s_a_pair()
 
 			# Ask the model what state and reward we'd get from that s-a pair.
 			step = model.get_value(plan_s, plan_a)
