@@ -12,7 +12,7 @@ import random
 EPSILON = 0.1
 DISCOUNT = 0.95
 LEARNING_RATE = 0.2
-TRAIN_STEPS = 10000
+TRAIN_STEPS = 20000
 PLAN_STEPS = 10
 NUM_RUNS = 3
 
@@ -51,15 +51,17 @@ def e_greedy_action(state, possible_actions, q_function, epsilon):
 class ModelEntry:
 	state: (int, int)
 	reward: float
+	visit_count: int
 
 
 class Model:
-	def __init__(self, width, height):
-		self._m = [[[ModelEntry((x, y), 0) for action in Action] for x in range(width)] for y in range(height)]
+	def __init__(self, width, height, expected_rewards=False):
+		self._m = [[[ModelEntry((x, y), 0, 0) for action in Action] for x in range(width)] for y in range(height)]
 		self._w = width
 		self._h = height
 		self._visited = set()
 		self._start_state = (0, 0)
+		self._expected_rewards = expected_rewards
 
 	def get_start_state(self):
 		return self._start_state
@@ -72,7 +74,14 @@ class Model:
 
 	def set_value(self, state, action, new_state, reward):
 		self._visited.add(state)
-		self._m[state[1]][state[0]][action.value] = ModelEntry(new_state, reward)
+		entry = self._m[state[1]][state[0]][action.value]
+		entry.visit_count += 1
+		entry.state = new_state
+		# Maintain an expected reward instead of just the most recent one.
+		if self._expected_rewards and entry.visit_count > 1:
+			entry.reward = (entry.reward * (entry.visit_count - 1) + reward) / entry.visit_count
+		else:
+			entry.reward = reward
 
 	def select_visited_s_a_pair(self):
 		# Sadly, this is much the same as the awful optimal_action method in
@@ -93,7 +102,11 @@ class Model:
 		return (state, action)
 
 
-def train_and_evaluate(maze, train_steps, plan_steps, trajectory_sampling=False):
+def train_and_evaluate(maze, train_steps, plan_steps, trajectory_sampling=False, randomise_with_expected_updates=False):
+	# Randomise rewards throughout the maze.
+	if randomise_with_expected_updates:
+		maze.set_random_rewards(True)
+
 	width, height = maze.dimensions()
 	q = QFunction(width, height)
 	model = Model(width, height)
@@ -165,10 +178,11 @@ def trim_to_same_length(lists):
 	return lists
 
 
-def average_over_n_runs(fn, num_runs):
+def average_over_n_runs(fn, num_runs, name="fn"):
 	steps_per_episode_records = []
 
 	for run in range(num_runs):
+		print(f"{name} run {run}...")
 		steps_per_episode_records.append(fn())
 
 	steps_per_episode_records = trim_to_same_length(steps_per_episode_records)
@@ -177,8 +191,12 @@ def average_over_n_runs(fn, num_runs):
 
 def run_experiment(maze):
 	steps_per_episode_records = []
-	steps_per_episode_records.append(average_over_n_runs(lambda: train_and_evaluate(maze, TRAIN_STEPS, PLAN_STEPS), NUM_RUNS))
-	steps_per_episode_records.append(average_over_n_runs(lambda: train_and_evaluate(maze, TRAIN_STEPS, PLAN_STEPS, trajectory_sampling=True), NUM_RUNS))
+	steps_per_episode_records.append(average_over_n_runs(
+			lambda: train_and_evaluate(maze, TRAIN_STEPS, PLAN_STEPS), NUM_RUNS, "normal"))
+	steps_per_episode_records.append(average_over_n_runs(
+			lambda: train_and_evaluate(maze, TRAIN_STEPS, PLAN_STEPS, trajectory_sampling=True), NUM_RUNS, "trajectories"))
+	steps_per_episode_records.append(average_over_n_runs(
+			lambda: train_and_evaluate(maze, TRAIN_STEPS, PLAN_STEPS, randomise_with_expected_updates=True), NUM_RUNS, "sampling"))
 
 	# More successful methods will have completed more episodes. Cut them all
 	# down to the lowest number of completed episodes for graph clarity.

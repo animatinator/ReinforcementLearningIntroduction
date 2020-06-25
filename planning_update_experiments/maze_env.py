@@ -3,6 +3,7 @@
 
 from dataclasses import dataclass
 from enum import Enum, unique
+import numpy as np
 import os
 
 
@@ -22,12 +23,13 @@ class Action(Enum):
 
 
 class MazeEnvironment:
-	def __init__(self, layout, start_pos, goal_pos):
+	def __init__(self, layout, start_pos, goal_pos, random_rewards=False):
 		self._grid = layout
 		self._s = start_pos
 		self._g = goal_pos
 		self._w = len(self._grid[0])
 		self._h = len(self._grid)
+		self._random_rewards = random_rewards
 
 	def dimensions(self):
 		return (self._w, self._h)
@@ -69,7 +71,11 @@ class MazeEnvironment:
 		if state == self._g:
 			return TimeStep(state, 1.0, True)
 		else:
-			return TimeStep(state, 0.0)
+			reward = np.random.normal(scale=0.2) if self._random_rewards else 0.0
+			return TimeStep(state, reward)
+
+	def set_random_rewards(self, should_use):
+		self._random_rewards = should_use
 
 
 def parse_maze_from_file(file_path):
