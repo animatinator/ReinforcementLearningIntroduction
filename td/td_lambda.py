@@ -7,7 +7,9 @@ from windy_env import Action, EXTENDED_KINGS_ACTIONS, TimeStep, WindyGridworld
 
 ALPHA = 0.3
 LAMBDA = 0.8
-TRAIN_STEPS = 500000
+EPSILON = 0.05
+DISCOUNT = 0.95
+TRAIN_STEPS = 50000
 REPORT_EVERY = 1000
 
 WINDS = [0, 0, 0, 1, 1, 1, 2, 2, 1, 0]
@@ -51,11 +53,12 @@ class Tiling3D:
 		self._offsets = [(x * tile_dimensions[0], y * tile_dimensions[1], z * tile_dimensions[2]) for (x, y, z) in tile_offsets]
 		# Per the above assumption, add an extra tile to the end to ensure we
 		# cover the whole range.
-		self._num_tiles_per_tiling = (int(float(domain[i] + 1) / tile_size) + 1 for i, tile_size in enumerate(tile_dimensions))
+		self._num_tiles_per_tiling = (int(float(domain[i]) / tile_size) + 1 for i, tile_size in enumerate(tile_dimensions))
 		# Set up a T*Nx*Ny array of weights where T = the number of different
 		# tilings and N = the numer of tiles in each tiling. Nx is the x axis
 		# and Ny the y.
 		self._weights = np.zeros((len(tile_offsets), *self._num_tiles_per_tiling), np.float64)
+		self._trace = np.copy(self._weights)
 	
 	def _check_in_domain(self, x, y, z):
 		assert 0.0 <= x <= self._domain[0], f"X must be in the range [0, {self._domain[0]}]"
@@ -75,6 +78,13 @@ class Tiling3D:
 
 		return result
 
+	def _action_values(self, x, y):
+		self._check_in_domain(x, y, 0)
+
+		values = [self.sample(x, y, a) for a in range(self._domain[2])]
+
+		return values
+
 	def learn_from_sample(self, x, y, z, value):
 		self._check_in_domain(x, y, z)
 
@@ -86,6 +96,59 @@ class Tiling3D:
 			tile_z = int((z - offset[2]) / self._tile_dimensions[2])
 			self._weights[i, tile_x, tile_y, tile_z] += rate * (value - self.sample(x, y, z))
 
+	def update_trace_and_get_delta_for_SA(self, state, action):
+		x, y = state
+		z = action.value
+		delta = 0
+
+		for i, offset in enumerate(self._offsets):
+			tile_x = int((x - offset[0]) / self._tile_dimensions[0])
+			tile_y = int((y - offset[1]) / self._tile_dimensions[1])
+			tile_z = int((z - offset[2]) / self._tile_dimensions[2])
+			delta -= self._weights[i, tile_x, tile_y, tile_z]
+			self._trace[i, tile_x, tile_y, tile_z] += 1
+
+		return delta
+
+	def get_updated_delta_for_end_of_step(self, state, action, delta):
+		x, y = state
+		z = action.value
+
+		for i, offset in enumerate(self._offsets):
+			tile_x = int((x - offset[0]) / self._tile_dimensions[0])
+			tile_y = int((y - offset[1]) / self._tile_dimensions[1])
+			tile_z = int((z - offset[2]) / self._tile_dimensions[2])
+			delta += DISCOUNT * self._weights[i, tile_x, tile_y, tile_z]
+
+		return delta
+
+	def decay_trace(self):
+		rate = ALPHA / float(len(self._offsets))
+		self._trace *= rate * DISCOUNT
+
+	def update_from_trace(self, delta):
+		rate = ALPHA / float(len(self._offsets))
+		self._weights += rate * delta * self._trace
+
+	def optimal_action(self, x, y, possible_actions):
+		# Absolute mess. Trying to get the maximum action from the possible actions.
+		# First get the Q-values, and bind them with the actions they represent, ie.
+		# (Q-value, Action).
+		action_values = self._action_values(x, y)
+		linked_to_actions = np.array([(val, Action(i)) for i, val in enumerate(action_values)])
+		# Filter down to the actions that are possible.
+		possibility_filter = np.isin(linked_to_actions[:, 1], list(possible_actions))
+		possible_options = linked_to_actions[possibility_filter]
+		# Return the action corresponding to the maximum Q-value.
+		return possible_options[np.argmax(possible_options[:, 0])][1]
+
+
+def e_greedy_action(state, possible_actions, value_function, epsilon):
+	if (np.random.uniform() < epsilon):
+		return random.choice(list(possible_actions))
+	else:
+		return value_function.optimal_action(state[0], state[1], possible_actions)
+
 
 def train_3d_approximation_for_test(domain, approximation, fn):
 	for i in range(TRAIN_STEPS):
@@ -94,9 +157,40 @@ def train_3d_approximation_for_test(domain, approximation, fn):
 
 
 if __name__ == '__main__':
-	domain = (WIDTH, HEIGHT, len(EXTENDED_KINGS_ACTIONS))
+	finished_episodes = 0
+
+	env = WindyGridworld(
+		WINDS, HEIGHT, GOAL_POS, EXTENDED_KINGS_ACTIONS, stochastic_wind = True)
+	domain = (WIDTH + 1, HEIGHT + 1, len(EXTENDED_KINGS_ACTIONS))
 	tiling = Tiling3D(domain=domain, tile_dimensions=(2.0, 2.0, 2.0), tile_offsets=TILE_OFFSETS)
-	train_3d_approximation_for_test(domain, tiling, test_3d_fn(domain))
-	print(tiling.sample(1, 1, 1))
-	print(tiling.sample(6, 6, 6))
-	print(tiling.sample(6, 4, 4))
+
+	state = START_STATE
+	action = e_greedy_action(state, env.available_actions(state), tiling, EPSILON)
+
+	for i in range(TRAIN_STEPS):
+		# Every REPORT_EVERY steps, print out how many times we reached the
+		# goal since the last report and reset the count.
+		if (i % REPORT_EVERY == 0):
+			print("Step {}, {} episodes completed since last report.".format(i, finished_episodes))
+			finished_episodes = 0
+
+		# Step, note the reward and get the next state and action.
+		timestep = env.step(state, action)
+		delta = timestep.reward
+		state_1 = timestep.state
+
+		delta += tiling.update_trace_and_get_delta_for_SA(state, action)
+
+		# Reset and increment finished_episodes if we reached the goal.
+		if timestep.terminal:
+			tiling.update_from_trace(delta)
+			finished_episodes += 1
+			state = START_STATE
+			action = e_greedy_action(state, env.available_actions(state), tiling, EPSILON)
+
+		action_1 = e_greedy_action(state_1, env.available_actions(state_1), tiling, EPSILON)
+		delta = tiling.get_updated_delta_for_end_of_step(state_1, action_1, delta)
+		tiling.update_from_trace(delta)
+		tiling.decay_trace()
+		state = state_1
+		action = action_1
