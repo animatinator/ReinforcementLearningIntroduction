@@ -54,10 +54,12 @@ class Tiling3D:
 		# Per the above assumption, add an extra tile to the end to ensure we
 		# cover the whole range.
 		self._num_tiles_per_tiling = (int(float(domain[i]) / tile_size) + 1 for i, tile_size in enumerate(tile_dimensions))
-		# Set up a T*Nx*Ny array of weights where T = the number of different
+		# Set up a T*Nx*Ny*Nz array of weights where T = the number of different
 		# tilings and N = the numer of tiles in each tiling. Nx is the x axis
 		# and Ny the y.
 		self._weights = np.zeros((len(tile_offsets), *self._num_tiles_per_tiling), np.float64)
+		# Set up an elegibility trace to track the eligibility of each weight
+		# for the current update.
 		self._trace = np.copy(self._weights)
 	
 	def _check_in_domain(self, x, y, z):
@@ -65,7 +67,8 @@ class Tiling3D:
 		assert 0.0 <= y <= self._domain[1], f"Y must be in the range [0, {self._domain[1]}]"
 		assert 0.0 <= z <= self._domain[2], f"Z must be in the range [0, {self._domain[2]}]"
 
-	def sample(self, x, y, z):
+	# Evaluate the approximation.
+	def _sample(self, x, y, z):
 		self._check_in_domain(x, y, z)
 
 		result = 0
@@ -78,25 +81,15 @@ class Tiling3D:
 
 		return result
 
+	# Compute the values of each of the actions at a given position.
 	def _action_values(self, x, y):
 		self._check_in_domain(x, y, 0)
 
-		values = [self.sample(x, y, a) for a in range(self._domain[2])]
+		values = [self._sample(x, y, a) for a in range(self._domain[2])]
 
 		return values
 
-	def learn_from_sample(self, x, y, z, value):
-		self._check_in_domain(x, y, z)
-
-		rate = ALPHA / float(len(self._offsets))
-
-		for i, offset in enumerate(self._offsets):
-			tile_x = int((x - offset[0]) / self._tile_dimensions[0])
-			tile_y = int((y - offset[1]) / self._tile_dimensions[1])
-			tile_z = int((z - offset[2]) / self._tile_dimensions[2])
-			self._weights[i, tile_x, tile_y, tile_z] += rate * (value - self.sample(x, y, z))
-
-	def update_trace_and_get_delta_for_SA(self, state, action):
+	def update_trace_and_get_delta_for_step_start(self, state, action):
 		x, y = state
 		z = action.value
 		delta = 0
@@ -122,11 +115,11 @@ class Tiling3D:
 
 		return delta
 
-	def decay_trace(self):
+	def decay_trace_after_step(self):
 		rate = ALPHA / float(len(self._offsets))
 		self._trace *= rate * DISCOUNT
 
-	def update_from_trace(self, delta):
+	def update_from_delta_using_current_trace(self, delta):
 		rate = ALPHA / float(len(self._offsets))
 		self._weights += rate * delta * self._trace
 
@@ -179,18 +172,18 @@ if __name__ == '__main__':
 		delta = timestep.reward
 		state_1 = timestep.state
 
-		delta += tiling.update_trace_and_get_delta_for_SA(state, action)
+		delta += tiling.update_trace_and_get_delta_for_step_start(state, action)
 
 		# Reset and increment finished_episodes if we reached the goal.
 		if timestep.terminal:
-			tiling.update_from_trace(delta)
+			tiling.update_from_delta_using_current_trace(delta)
 			finished_episodes += 1
 			state = START_STATE
 			action = e_greedy_action(state, env.available_actions(state), tiling, EPSILON)
 
 		action_1 = e_greedy_action(state_1, env.available_actions(state_1), tiling, EPSILON)
 		delta = tiling.get_updated_delta_for_end_of_step(state_1, action_1, delta)
-		tiling.update_from_trace(delta)
-		tiling.decay_trace()
+		tiling.update_from_delta_using_current_trace(delta)
+		tiling.decay_trace_after_step()
 		state = state_1
 		action = action_1
