@@ -3,12 +3,13 @@
 from corridor_env import Action, ShortCorridor, TimeStep
 from dataclasses import dataclass
 import math
+import matplotlib.pyplot as plt
 import numpy as np
 
 
-ALPHA = 0.0002
+ALPHA = 0.02
 DISCOUNT = 0.9
-NUM_TRAIN_EPISODES = 1000
+NUM_TRAIN_EPISODES = 2000
 
 
 class SimpleParameterisedPolicy:
@@ -26,9 +27,9 @@ class SimpleParameterisedPolicy:
 		total_preference = 0.0
 
 		for action in self._action_type:
-			preference = self._compute_preference(state, action)
-			total_preference += preference
-			preferences[action.value] = preference
+			preference_exp = math.exp(self._compute_preference(state, action))
+			total_preference += preference_exp
+			preferences[action.value] = preference_exp
 
 		if total_preference == 0.0:
 			return np.ones((len(self._action_type))) / len(self._action_type)
@@ -71,19 +72,38 @@ def generate_episode(env, policy):
 
 	return episode
 
+# Adjust the policy based on a real episode.
+def learn_from_episode(policy, episode):
+	# The last step doesn't take an action so we can't learn from it.
+	for step in range(0, len(episode) - 1):
+		G = 0
+		for substep in range(step + 1, len(episode)):
+			G += math.pow(DISCOUNT, substep - (step + 1)) * episode[substep].step.reward
+		policy.adjust_weights_along_gradient(
+				episode[step].step.state, episode[step].action, ALPHA * math.pow(DISCOUNT, step) * G)
+
+# Train the policy on an environment by repeatedly generating episodes and
+# learning from them.
+# Returns a list of episode lengths.
+def train_policy(policy, env):
+	episode_lengths = []
+
+	for episode_id in range(0, NUM_TRAIN_EPISODES):
+		episode = generate_episode(env, policy)
+		episode_lengths.append(len(episode))
+
+		learn_from_episode(policy, episode)
+
+	return episode_lengths
+
+def graph_training_process(env, policy):
+	episode_lengths = train_policy(policy, env)
+	xs = [x for x in range(0, len(episode_lengths))]
+	plt.plot(xs, episode_lengths)
+	plt.show()
+
 
 if __name__ == '__main__':
 	env = ShortCorridor()
 	policy = SimpleParameterisedPolicy(4, Action)
-
-	for episode_id in range(0, NUM_TRAIN_EPISODES):
-		episode = generate_episode(env, policy)
-		print(len(episode))
-
-		# The last step doesn't take an action so we can't learn from it.
-		for step in range(0, len(episode) - 1):
-			G = 0
-			for substep in range(step + 1, len(episode)):
-				G += math.pow(DISCOUNT, substep - (step + 1)) * episode[substep].step.reward
-			policy.adjust_weights_along_gradient(
-					episode[step].step.state, episode[step].action, ALPHA * math.pow(DISCOUNT, step) * G)
+	graph_training_process(env, policy)
