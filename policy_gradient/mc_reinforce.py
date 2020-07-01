@@ -1,11 +1,14 @@
 # REINFORCE: Monte-Carlo policy gradient control (episodic).
 
-from corridor_env import Action, ShortCorridor
+from corridor_env import Action, ShortCorridor, TimeStep
+from dataclasses import dataclass
+import math
 import numpy as np
 
 
-ALPHA = 0.000000000002  # TODO(DO NOT SUBMIT): Really?
-NUM_TRAIN_STEPS = 10000
+ALPHA = 0.0002
+DISCOUNT = 0.9
+NUM_TRAIN_EPISODES = 1000
 
 
 class SimpleParameterisedPolicy:
@@ -38,16 +41,33 @@ class SimpleParameterisedPolicy:
 		action_id = np.random.choice([i for i in range(0, len(self._action_type))], p=probabilities)
 		return Action(action_id)
 
+	def adjust_weights_along_gradient(self, state, action, scale):
+		gradient = np.zeros(len(self._action_type))
+		gradient[action.value] = 1
+
+		action_probabilities = self.evaluate_actions(state)
+		for action in self._action_type:
+			gradient[action.value] -= action_probabilities[action.value]
+
+		self._weights[state, :] += gradient * scale
+
+
+@dataclass
+class EpisodeStep:
+	step: TimeStep
+	action: Action
+
 
 # Generate an episode by applying the policy to the environment.
 def generate_episode(env, policy):
 	step = env.reset()
-	episode = [step]
+	episode = []
 
 	while not step.terminal:
 		action = policy.select_action(step.state)
+		episode.append(EpisodeStep(step, action))
 		step = env.step(step.state, action)
-		episode.append(step)
+	episode.append(EpisodeStep(step, None))
 
 	return episode
 
@@ -56,5 +76,14 @@ if __name__ == '__main__':
 	env = ShortCorridor()
 	policy = SimpleParameterisedPolicy(4, Action)
 
-	state = env.reset()
-	print(generate_episode(env, policy))
+	for episode_id in range(0, NUM_TRAIN_EPISODES):
+		episode = generate_episode(env, policy)
+		print(len(episode))
+
+		# The last step doesn't take an action so we can't learn from it.
+		for step in range(0, len(episode) - 1):
+			G = 0
+			for substep in range(step + 1, len(episode)):
+				G += math.pow(DISCOUNT, substep - (step + 1)) * episode[substep].step.reward
+			policy.adjust_weights_along_gradient(
+					episode[step].step.state, episode[step].action, ALPHA * math.pow(DISCOUNT, step) * G)
