@@ -42,7 +42,7 @@ class ShortCorridor:
 		assert action in Action, "Invalid action"
 
 		movement = action.get_movement()
-		if state == 0:
+		if state == 0 and movement < 0:
 			movement = 0
 		elif state == 1:
 			movement = -movement
