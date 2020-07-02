@@ -174,7 +174,7 @@ def train_and_evaluate():
 	track = read_track('racetrack/track.bmp')
 	env = TrackEnvironment(track)
 	size = env.size()
-	domain = (size[0] + 1, size[1] + 1, constants.MAX_VELOCITY, constants.MAX_VELOCITY, len(Action))
+	domain = (size[0] + 1, size[1] + 1, constants.MAX_VELOCITY + 1, constants.MAX_VELOCITY + 1, len(Action))
 
 	tiling = CoarseTiling(domain, tile_dimensions=(2.5, 2.5, 2.0, 2.0, 1.0), tile_offsets = TILE_OFFSETS_5D)
 
@@ -201,6 +201,7 @@ def train_and_evaluate():
 			finished_episodes += 1
 			state = env.reset().state
 			action = e_greedy_action(state, env.get_available_actions(state), tiling, EPSILON)
+			continue
 
 		action_1 = e_greedy_action(state_1, env.get_available_actions(state_1), tiling, EPSILON)
 		delta = tiling.get_updated_delta_for_end_of_step(vectorise_state(state_1), action_1.value, delta)
@@ -212,7 +213,4 @@ def train_and_evaluate():
 
 
 if __name__ == '__main__':
-	domain = (10, 10, 10, 10)
-	tiling = CoarseTiling(domain, tile_dimensions=(2.0, 2.0, 2.0, 2.0), tile_offsets = TILE_OFFSETS_4D)
-
 	train_and_evaluate()
