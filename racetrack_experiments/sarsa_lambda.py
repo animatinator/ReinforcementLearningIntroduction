@@ -3,7 +3,9 @@
 import numpy as np
 import random
 from racetrack import constants
+from racetrack.policy import Policy
 from racetrack.track import Action, TrackEnvironment, read_track
+from save_policy import save_policy
 
 
 ALPHA = 0.3
@@ -57,10 +59,11 @@ class CoarseTiling:
 		self._dimension = len(domain)
 		self._domain = domain
 		self._tile_dimensions = tile_dimensions
+		self._original_tile_offsets = tile_offsets
 		self._offsets = [[x * tile_dimensions[d] for d, x in enumerate(offsets)] for offsets in tile_offsets]
 		# Per the above assumption, add an extra tile to the end to ensure we
 		# cover the whole range.
-		self._num_tiles_per_tiling = (int(float(domain[i]) / tile_size) + 1 for i, tile_size in enumerate(tile_dimensions))
+		self._num_tiles_per_tiling = [int(float(domain[i]) / tile_size) + 1 for i, tile_size in enumerate(tile_dimensions)]
 		# Set up a T*Nx*Ny*... array of weights where T = the number of different
 		# tilings and N = the numer of tiles in each tiling. Nx is the x axis
 		# and Ny the y etc.
@@ -150,6 +153,22 @@ class CoarseTiling:
 			position = self._get_offsets_for_point_in_ith_tiling(point, i)
 			self._weights[(i, *position)] += rate * (value - self._sample(point))
 
+	def serialise(self):
+		return {
+			'domain': self._domain,
+			'tile_dimensions': self._tile_dimensions,
+			'tile_offsets': self._original_tile_offsets,
+			'weights': self._weights
+		}
+
+	def override_weights_from_serialisation(self, weights):
+		self._weights = weights
+
+def deserialise_coarse_tiling(serialised_dict):
+	tiling = CoarseTiling(serialised_dict['domain'], serialised_dict['tile_dimensions'], serialised_dict['tile_offsets'])
+	tiling.override_weights_from_serialisation(serialised_dict['weights'])
+	return tiling
+
 
 def vectorise_state(state):
 	return (state.pos[0], state.pos[1], state.vel[0], state.vel[1])
@@ -166,6 +185,19 @@ def train_nd_approximation_for_test(domain, approximation, fn):
 	for i in range(TRAIN_STEPS):
 		point, value = sample_nd_fn(domain, fn)
 		approximation.learn_from_sample(point, value)
+
+
+class ApproximatedPolicy(Policy):
+	def __init__(self, approximator):
+		self._v = approximator
+
+	def get_action(self, state, possible_actions):
+		return self._v.optimal_action(vectorise_state(state), possible_actions)
+
+
+class EGreedyApproximatedPolicy(ApproximatedPolicy):
+	def get_action(self, state, possible_actions):
+		return e_greedy_action(state, possible_actions, self._v, EPSILON)
 
 
 def train_and_evaluate():
@@ -210,6 +242,10 @@ def train_and_evaluate():
 		state = state_1
 		action = action_1
 	
+	print("Saving policy...")
+	save_policy(tiling.serialise())
+	print("Done!")
+
 
 
 if __name__ == '__main__':

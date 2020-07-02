@@ -1,5 +1,6 @@
 # A PyGame tool for testing out the track environment.
 
+import os
 import pygame
 from track import Action, InspectableTrackEnvironent, read_track
 
@@ -36,7 +37,7 @@ class HumanController:
 				if event.key == pygame.K_DOWN:
 					action = Action.DECEL_Y
 				
-				timestep = env.step(self._state, action)
+				timestep = self._env.step(self._state, action)
 				self._total_reward += timestep.reward
 				self._state = timestep.state
 				print(timestep)
@@ -89,13 +90,18 @@ def game_loop(env, controller):
 		clock.tick(10)
 
 
-if __name__ == '__main__':	
+def main(controller_factory):
 	pygame.init()
 
-	track = read_track('track.bmp')
+	path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'track.bmp')
+	track = read_track(path)
 	env = InspectableTrackEnvironent(track)
-	controller = HumanController(env)
-	
+	controller = controller_factory(env)
+
 	game_loop(env, controller)
-	
+
 	pygame.quit()
+
+
+if __name__ == '__main__':
+	main(lambda env: HumanController(env))
