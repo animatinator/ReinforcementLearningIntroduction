@@ -9,7 +9,6 @@
 #   maps to track[y][x].
 
 
-import constants
 from dataclasses import dataclass
 from enum import Enum, unique
 import numpy as np
@@ -17,6 +16,10 @@ import os
 from PIL import Image
 import random
 import sys
+# Truly horrendous, but couldn't find a better way of being able to run this
+# both from the parent directory and this directory. Pull requests welcome.
+sys.path.append(os.path.dirname(os.path.realpath(__file__)))
+import constants
 
 
 def read_track(filename):
