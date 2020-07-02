@@ -13,15 +13,15 @@ TRAIN_STEPS = 50000
 REPORT_EVERY = 1000
 
 TILE_OFFSETS_3D = [(0.0, 0.0, 0.0),
-					(-0.1, -0.3, -0.5),
-					(-0.5, -0.7, -0.9),
-					(-0.45, -0.1, -0.32),
+	(-0.1, -0.3, -0.5),
+	(-0.5, -0.7, -0.9),
+	(-0.45, -0.1, -0.32),
 					(-0.8, -0.23, -0.5)]
 TILE_OFFSETS_4D = [(0.0, 0.0, 0.0, 0.0),
-					(-0.1, -0.3, -0.5, -0.7),
-					(-0.5, -0.7, -0.9, -0.1),
-					(-0.45, -0.1, -0.32, -0.27),
-					(-0.8, -0.23, -0.5, -0.73)]
+	(-0.1, -0.3, -0.5, -0.7),
+	(-0.5, -0.7, -0.9, -0.1),
+	(-0.45, -0.1, -0.32, -0.27),
+	(-0.8, -0.23, -0.5, -0.73)]
 
 
 # A 4D function sampler and a sample 4D function to test the tiling approximator.
@@ -212,9 +212,9 @@ def train_and_evaluate():
 
 
 if __name__ == '__main__':
-	domain = (10, 10, 10)
-	tiling = CoarseTiling(domain, tile_dimensions=(5.0, 5.0, 5.0), tile_offsets = TILE_OFFSETS_3D)
+	domain = (10, 10, 10, 10)
+	tiling = CoarseTiling(domain, tile_dimensions=(2.0, 2.0, 2.0, 2.0), tile_offsets = TILE_OFFSETS_4D)
 
 	train_nd_approximation_for_test(domain, tiling, test_nd_fn(domain))
-	print(tiling._sample((1, 2, 3)))
-	print(tiling._sample((6, 6, 6)))
+	print(tiling._sample((1, 2, 3, 4)))
+	print(tiling._sample((6, 6, 6, 6)))
