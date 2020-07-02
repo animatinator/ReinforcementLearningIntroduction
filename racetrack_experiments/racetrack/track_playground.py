@@ -2,7 +2,7 @@
 
 import os
 import pygame
-from track import Action, InspectableTrackEnvironent, read_track
+from .track import Action, InspectableTrackEnvironent, read_track
 
 
 TILE_SIZE = 6

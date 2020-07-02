@@ -1,7 +1,6 @@
 # A wrapper around racetrack/track_playgound.py that passes in a policy controller.
 
 import argparse
-import pdb
 import pickle
 from racetrack import track_playground
 from sarsa_lambda import *
@@ -19,9 +18,8 @@ class PolicyController:
 		self._total_reward = 0
 	
 	def step(self, events):
-		pdb.set_trace()
 		action = self._policy.get_action(self._state, self._env.get_available_actions(self._state))
-		timestep = env.step(self._state, action)
+		timestep = self._env.step(self._state, action)
 		self._state = timestep.state
 		self._total_reward += timestep.reward
 		print(timestep)
@@ -29,7 +27,7 @@ class PolicyController:
 		if (timestep.terminal):
 			print("Goal reached! Total reward: {}".format(self._total_reward))
 			print("Resetting")
-			self._state = env.reset().state
+			self._state = self._env.reset().state
 			self._total_reward = 0
 
 	def get_state(self):
