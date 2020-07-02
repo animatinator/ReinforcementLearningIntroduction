@@ -88,6 +88,9 @@ class Track:
 		goal_x = len(self.track[0]) - 1
 		x_distance = float(end[0] - start[0])
 		
+		if x_distance == 0:
+			return (goal_x, start[1])
+
 		gradient = float(end[1] - start[1]) / x_distance
 		y_at_goal = start[1] + (float(goal_x - start[0]) / x_distance) * gradient
 
@@ -116,17 +119,13 @@ class TrackEnvironment:
 		return (x, y)
 		
 	def reset(self):
-		self._position = self._random_start_position()
-		self._velocity = (0, 0)
-		return TimeStep(self._get_state(), 0)
+		state = State(self._random_start_position(), (0, 0))
+		return TimeStep(state, 0)
 	
 	def _compute_move(self, position, velocity):
 		# We subtract 'y' velocity because the car is moving up the screen.
 		# ('y' velocity is flipped to keep it positive for convenience.)
 		return (position[0] + velocity[0], position[1] - velocity[1])
-		
-	def _get_state(self):
-		return State(self._position, self._velocity)
 
 	def get_available_actions(self, state):
 		actions = set()
@@ -143,27 +142,22 @@ class TrackEnvironment:
 			actions.add(Action.ACCEL_Y)
 
 		return actions
-
-	# Utility method that uses the current state rather than taking an argument.
-	def _available_actions(self):
-		return self.get_available_actions(State(self._position, self._velocity))
 		
-	def step(self, action):
-		assert action in self._available_actions(), f"Invalid action! State: {self._get_state()}, action: {action}"
+	def step(self, state, action):
+		assert action in self.get_available_actions(state), f"Invalid action! State: {state}, action: {action}"
 
 		movement = action.get_movement()
-		self._velocity = (self._velocity[0] + movement[0], self._velocity[1] + movement[1])
-		new_pos = self._compute_move(self._position, self._velocity)
+		velocity = (state.vel[0] + movement[0], state.vel[1] + movement[1])
+		new_pos = self._compute_move(state.pos, velocity)
 
-		if self._track.crosses_goal(self._position, new_pos):
-			new_pos = self._track.snap_to_goal(self._position, new_pos)
-			return TimeStep(State(new_pos, self._velocity), constants.GOAL_REWARD, terminal = True)
+		if self._track.crosses_goal(state.pos, new_pos):
+			new_pos = self._track.snap_to_goal(state.pos, new_pos)
+			return TimeStep(State(new_pos, velocity), constants.GOAL_REWARD, terminal = True)
 		elif self._track.out_of_range(new_pos):
-			self.reset()
-			return TimeStep(self._get_state(), constants.STEP_REWARD)
+			state = State(self._random_start_position(), (0, 0))
+			return TimeStep(state, constants.STEP_REWARD)
 		else:
-			self._position = new_pos
-			return TimeStep(self._get_state(), constants.STEP_REWARD)
+			return TimeStep(State(new_pos, velocity), constants.STEP_REWARD)
 
 
 class InspectableTrackEnvironent(TrackEnvironment):

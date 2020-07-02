@@ -17,7 +17,7 @@ class HumanController:
 		self.reset()
 		
 	def reset(self):
-		self._env.reset()
+		self._state = self._env.reset().state
 		self._total_reward = 0
 
 	def step(self, events):
@@ -36,18 +36,22 @@ class HumanController:
 				if event.key == pygame.K_DOWN:
 					action = Action.DECEL_Y
 				
-				timestep = env.step(action)
+				timestep = env.step(self._state, action)
 				self._total_reward += timestep.reward
+				self._state = timestep.state
 				print(timestep)
 				
 				if (timestep.terminal):
 					print("Goal reached! Total reward: {}".format(self._total_reward))
 					print("Resetting")
-					env.reset()
+					self.reset()
 					self._total_reward = 0
 
+	def get_state(self):
+		return self._state
 
-def _draw_env(env, screen):
+
+def _draw_env(env, screen, state):
 	screen.fill(GRASS_COLOUR)
 
 	track = env.get_track().track
@@ -57,7 +61,7 @@ def _draw_env(env, screen):
 			if track[y][x]:
 				pygame.draw.rect(screen, ROAD_COLOUR, (x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE))
 	
-	pos = env.get_state().pos
+	pos = state.pos
 	pygame.draw.rect(screen, CAR_COLOUR, (pos[0] * TILE_SIZE, pos[1] * TILE_SIZE, TILE_SIZE, TILE_SIZE))
 
 
@@ -79,7 +83,7 @@ def game_loop(env, controller):
 		
 		controller.step(events)
 		
-		_draw_env(env, screen)
+		_draw_env(env, screen, controller.get_state())
 		pygame.display.flip()
 		
 		clock.tick(10)

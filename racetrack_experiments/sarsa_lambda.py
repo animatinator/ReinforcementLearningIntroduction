@@ -151,11 +151,15 @@ class CoarseTiling:
 			self._weights[(i, *position)] += rate * (value - self._sample(point))
 
 
+def vectorise_state(state):
+	return (state.pos[0], state.pos[1], state.vel[0], state.vel[1])
+
+
 def e_greedy_action(state, possible_actions, value_function, epsilon):
 	if (np.random.uniform() < epsilon):
 		return random.choice(list(possible_actions))
 	else:
-		return value_function.optimal_action((state.pos[0], state.pos[1], state.vel[0], state.vel[1]), possible_actions)
+		return value_function.optimal_action(vectorise_state(state), possible_actions)
 
 
 def train_nd_approximation_for_test(domain, approximation, fn):
@@ -185,11 +189,11 @@ def train_and_evaluate():
 			finished_episodes = 0
 
 		# Step, note the reward and get the next state and action.
-		timestep = env.step(action)
+		timestep = env.step(state, action)
 		delta = timestep.reward
 		state_1 = timestep.state
 
-		delta += tiling.update_trace_and_get_delta_for_step_start(state, action)
+		delta += tiling.update_trace_and_get_delta_for_step_start(vectorise_state(state), action.value)
 
 		# Reset and increment finished_episodes if we reached the goal.
 		if timestep.terminal:
@@ -199,7 +203,7 @@ def train_and_evaluate():
 			action = e_greedy_action(state, env.get_available_actions(state), tiling, EPSILON)
 
 		action_1 = e_greedy_action(state_1, env.get_available_actions(state_1), tiling, EPSILON)
-		delta = tiling.get_updated_delta_for_end_of_step(state_1, action_1, delta)
+		delta = tiling.get_updated_delta_for_end_of_step(vectorise_state(state_1), action_1.value, delta)
 		tiling.update_from_delta_using_current_trace(delta)
 		tiling.decay_trace_after_step()
 		state = state_1
