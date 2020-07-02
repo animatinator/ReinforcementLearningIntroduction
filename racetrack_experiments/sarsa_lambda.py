@@ -12,7 +12,7 @@ ALPHA = 0.3
 LAMBDA = 0.8
 EPSILON = 0.05
 DISCOUNT = 0.95
-TRAIN_STEPS = 50000
+TRAIN_STEPS = 200000
 REPORT_EVERY = 1000
 
 TILE_OFFSETS_3D = [(0.0, 0.0, 0.0),
@@ -208,7 +208,7 @@ def train_and_evaluate():
 	size = env.size()
 	domain = (size[0] + 1, size[1] + 1, constants.MAX_VELOCITY + 1, constants.MAX_VELOCITY + 1, len(Action))
 
-	tiling = CoarseTiling(domain, tile_dimensions=(2.5, 2.5, 2.0, 2.0, 1.0), tile_offsets = TILE_OFFSETS_5D)
+	tiling = CoarseTiling(domain, tile_dimensions=(5.0, 5.0, 2.0, 2.0, 1.0), tile_offsets = TILE_OFFSETS_5D)
 
 	state = env.reset().state
 	action = e_greedy_action(state, env.get_available_actions(state), tiling, EPSILON)
