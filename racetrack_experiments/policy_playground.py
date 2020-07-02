@@ -23,7 +23,7 @@ class PolicyController:
 		self._state = timestep.state
 		self._total_reward += timestep.reward
 		print(timestep)
-		
+
 		if (timestep.terminal):
 			print("Goal reached! Total reward: {}".format(self._total_reward))
 			print("Resetting")
