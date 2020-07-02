@@ -127,10 +127,10 @@ class TrackEnvironment:
 
 		if self._velocity[0] >= constants.MIN_VELOCITY or self._velocity[1] >= constants.MIN_VELOCITY:
 			actions.add(Action.NOOP)
-		if self._velocity[0] > constants.MIN_VELOCITY:
-			actions.add(Action.DECEL_X)
-		if self._velocity[1] > constants.MIN_VELOCITY:
-			actions.add(Action.DECEL_Y)
+			if self._velocity[0] > 0:
+				actions.add(Action.DECEL_X)
+			if self._velocity[1] > 0:
+				actions.add(Action.DECEL_Y)
 		if self._velocity[0] < constants.MAX_VELOCITY:
 			actions.add(Action.ACCEL_X)
 		if self._velocity[1] < constants.MAX_VELOCITY:
