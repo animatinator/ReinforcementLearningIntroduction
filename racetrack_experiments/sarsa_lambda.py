@@ -2,6 +2,7 @@
 
 import numpy as np
 import random
+from racetrack import constants
 from racetrack.track import Action, TrackEnvironment, read_track
 
 
@@ -22,6 +23,11 @@ TILE_OFFSETS_4D = [(0.0, 0.0, 0.0, 0.0),
 	(-0.5, -0.7, -0.9, -0.1),
 	(-0.45, -0.1, -0.32, -0.27),
 	(-0.8, -0.23, -0.5, -0.73)]
+TILE_OFFSETS_5D = [(0.0, 0.0, 0.0, 0.0, 0.0),
+	(-0.1, -0.3, -0.5, -0.7, -0.9),
+	(-0.5, -0.7, -0.9, -0.1, -0.3),
+	(-0.45, -0.1, -0.32, -0.27, -0.51),
+	(-0.8, -0.23, -0.5, -0.73, -0.16)]
 
 
 # A 4D function sampler and a sample 4D function to test the tiling approximator.
@@ -87,41 +93,31 @@ class CoarseTiling:
 		return result
 
 	# Compute the values of each of the actions at a given position.
-	# TODO: Rewrite.
-	def _action_values(self, x, y):
-		self._check_in_domain(x, y, 0)
+	def _action_values(self, point):
+		assert len(point) == self._dimension - 1, f"Point should be {self._dimension - 1}-dimensional, but is {len(point)}-dimensional."
+		self._check_in_domain((*point, 0))
 
-		values = [self._sample(x, y, a) for a in range(self._domain[2])]
+		values = [self._sample((*point, a)) for a in range(self._domain[-1])]
 
 		return values
 
 	def update_trace_and_get_delta_for_step_start(self, state, action):
-		# TODO: Rewrite.
-		x, y = state
-		z = action.value
+		assert len(state) == self._dimension - 1, f"State should be {self._dimension - 1}-dimensional, but is {len(state)}-dimensional."
 		delta = 0
 
-		# TODO: Rewrite.
-		for i, offset in enumerate(self._offsets):
-			tile_x = int((x - offset[0]) / self._tile_dimensions[0])
-			tile_y = int((y - offset[1]) / self._tile_dimensions[1])
-			tile_z = int((z - offset[2]) / self._tile_dimensions[2])
-			delta -= self._weights[i, tile_x, tile_y, tile_z]
-			self._trace[i, tile_x, tile_y, tile_z] += 1
+		for i in range(0, len(self._offsets)):
+			position = self._get_offsets_for_point_in_ith_tiling((*state, action), i)
+			delta -= self._weights[(i, *position)]
+			self._trace[(i, *position)] += 1
 
 		return delta
 
 	def get_updated_delta_for_end_of_step(self, state, action, delta):
-		# TODO: Rewrite.
-		x, y = state
-		z = action.value
+		assert len(state) == self._dimension - 1, f"State should be {self._dimension - 1}-dimensional, but is {len(state)}-dimensional."
 
-		# TODO: Rewrite.
-		for i, offset in enumerate(self._offsets):
-			tile_x = int((x - offset[0]) / self._tile_dimensions[0])
-			tile_y = int((y - offset[1]) / self._tile_dimensions[1])
-			tile_z = int((z - offset[2]) / self._tile_dimensions[2])
-			delta += DISCOUNT * self._weights[i, tile_x, tile_y, tile_z]
+		for i in range(0, len(self._offsets)):
+			position = self._get_offsets_for_point_in_ith_tiling((*state, action), i)
+			delta += DISCOUNT * self._weights[(i, *position)]
 
 		return delta
 
@@ -133,12 +129,11 @@ class CoarseTiling:
 		rate = ALPHA / float(len(self._offsets))
 		self._weights += rate * delta * self._trace
 
-	# TODO: Rewrite.
-	def optimal_action(self, x, y, possible_actions):
+	def optimal_action(self, point, possible_actions):
 		# Absolute mess. Trying to get the maximum action from the possible actions.
 		# First get the Q-values, and bind them with the actions they represent, ie.
 		# (Q-value, Action).
-		action_values = self._action_values(x, y)
+		action_values = self._action_values(point)
 		linked_to_actions = np.array([(val, Action(i)) for i, val in enumerate(action_values)])
 		# Filter down to the actions that are possible.
 		possibility_filter = np.isin(linked_to_actions[:, 1], list(possible_actions))
@@ -160,7 +155,7 @@ def e_greedy_action(state, possible_actions, value_function, epsilon):
 	if (np.random.uniform() < epsilon):
 		return random.choice(list(possible_actions))
 	else:
-		return value_function.optimal_action(state[0], state[1], possible_actions)
+		return value_function.optimal_action((state.pos[0], state.pos[1], state.vel[0], state.vel[1]), possible_actions)
 
 
 def train_nd_approximation_for_test(domain, approximation, fn):
@@ -170,16 +165,17 @@ def train_nd_approximation_for_test(domain, approximation, fn):
 
 
 def train_and_evaluate():
-	# TODO: Rewrite to use the racetrack.
 	finished_episodes = 0
 
-	env = WindyGridworld(
-		WINDS, HEIGHT, GOAL_POS, EXTENDED_KINGS_ACTIONS, stochastic_wind = True)
-	domain = (WIDTH + 1, HEIGHT + 1, len(EXTENDED_KINGS_ACTIONS))
-	tiling = Tiling3D(domain=domain, tile_dimensions=(2.0, 2.0, 2.0), tile_offsets=TILE_OFFSETS)
+	track = read_track('racetrack/track.bmp')
+	env = TrackEnvironment(track)
+	size = env.size()
+	domain = (size[0] + 1, size[1] + 1, constants.MAX_VELOCITY, constants.MAX_VELOCITY, len(Action))
 
-	state = START_STATE
-	action = e_greedy_action(state, env.available_actions(state), tiling, EPSILON)
+	tiling = CoarseTiling(domain, tile_dimensions=(2.5, 2.5, 2.0, 2.0, 1.0), tile_offsets = TILE_OFFSETS_5D)
+
+	state = env.reset().state
+	action = e_greedy_action(state, env.get_available_actions(state), tiling, EPSILON)
 
 	for i in range(TRAIN_STEPS):
 		# Every REPORT_EVERY steps, print out how many times we reached the
@@ -189,7 +185,7 @@ def train_and_evaluate():
 			finished_episodes = 0
 
 		# Step, note the reward and get the next state and action.
-		timestep = env.step(state, action)
+		timestep = env.step(action)
 		delta = timestep.reward
 		state_1 = timestep.state
 
@@ -199,10 +195,10 @@ def train_and_evaluate():
 		if timestep.terminal:
 			tiling.update_from_delta_using_current_trace(delta)
 			finished_episodes += 1
-			state = START_STATE
-			action = e_greedy_action(state, env.available_actions(state), tiling, EPSILON)
+			state = env.reset().state
+			action = e_greedy_action(state, env.get_available_actions(state), tiling, EPSILON)
 
-		action_1 = e_greedy_action(state_1, env.available_actions(state_1), tiling, EPSILON)
+		action_1 = e_greedy_action(state_1, env.get_available_actions(state_1), tiling, EPSILON)
 		delta = tiling.get_updated_delta_for_end_of_step(state_1, action_1, delta)
 		tiling.update_from_delta_using_current_trace(delta)
 		tiling.decay_trace_after_step()
@@ -215,6 +211,4 @@ if __name__ == '__main__':
 	domain = (10, 10, 10, 10)
 	tiling = CoarseTiling(domain, tile_dimensions=(2.0, 2.0, 2.0, 2.0), tile_offsets = TILE_OFFSETS_4D)
 
-	train_nd_approximation_for_test(domain, tiling, test_nd_fn(domain))
-	print(tiling._sample((1, 2, 3, 4)))
-	print(tiling._sample((6, 6, 6, 6)))
+	train_and_evaluate()

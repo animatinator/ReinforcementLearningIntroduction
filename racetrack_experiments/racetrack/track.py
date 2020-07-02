@@ -107,6 +107,9 @@ class TrackEnvironment:
 		self._track = track
 		self.reset()
 		
+	def size(self):
+		return self._track.size()
+
 	def _random_start_position(self):
 		y = len(self._track.track) - 1
 		x = random.randrange(self._track.start_range[0], self._track.start_range[1])
@@ -125,24 +128,28 @@ class TrackEnvironment:
 	def _get_state(self):
 		return State(self._position, self._velocity)
 
-	def get_available_actions(self):
+	def get_available_actions(self, state):
 		actions = set()
 
-		if self._velocity[0] >= constants.MIN_VELOCITY or self._velocity[1] >= constants.MIN_VELOCITY:
+		if state.vel[0] >= constants.MIN_VELOCITY or state.vel[1] >= constants.MIN_VELOCITY:
 			actions.add(Action.NOOP)
-			if self._velocity[0] > 0:
+			if state.vel[0] > 0:
 				actions.add(Action.DECEL_X)
-			if self._velocity[1] > 0:
+			if state.vel[1] > 0:
 				actions.add(Action.DECEL_Y)
-		if self._velocity[0] < constants.MAX_VELOCITY:
+		if state.vel[0] < constants.MAX_VELOCITY:
 			actions.add(Action.ACCEL_X)
-		if self._velocity[1] < constants.MAX_VELOCITY:
+		if state.vel[1] < constants.MAX_VELOCITY:
 			actions.add(Action.ACCEL_Y)
 
 		return actions
+
+	# Utility method that uses the current state rather than taking an argument.
+	def _available_actions(self):
+		return self.get_available_actions(State(self._position, self._velocity))
 		
 	def step(self, action):
-		assert action in self.get_available_actions(), f"Invalid action! State: {self._get_state()}, action: {action}"
+		assert action in self._available_actions(), f"Invalid action! State: {self._get_state()}, action: {action}"
 
 		movement = action.get_movement()
 		self._velocity = (self._velocity[0] + movement[0], self._velocity[1] + movement[1])
@@ -168,9 +175,6 @@ class InspectableTrackEnvironent(TrackEnvironment):
 		
 	def get_state(self):
 		return self._get_state()
-		
-	def size(self):
-		return self._track.size()
 
 
 if __name__ == '__main__':
